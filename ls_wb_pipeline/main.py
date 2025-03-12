@@ -38,6 +38,7 @@ def download_videos():
 
     for file in files:
         remote_file_path = f"{REMOTE_VIDEO_DIR}/{file}"  # Формируем полный путь
+        print(f"Downloading {remote_file_path}")
         local_path = os.path.join(LOCAL_VIDEO_DIR, os.path.basename(file))
 
         if not os.path.exists(local_path):
@@ -111,6 +112,7 @@ def cleanup_videos():
 
 
 def main():
+    print(f"Mainloop has been launched")
     while True:
         download_videos()
         videos = [os.path.join(LOCAL_VIDEO_DIR, f) for f in
