@@ -59,7 +59,7 @@ def extract_frames(video_path):
 
     cap = cv2.VideoCapture(video_path)
     frame_count = 0
-
+    print(f"Extracting frames from {video_path}")
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
