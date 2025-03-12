@@ -29,7 +29,7 @@ LABELSTUDIO_TOKEN = os.environ.get("labelstudio_token")
 DATASET_SPLIT = {"train": 0.7, "test": 0.2, "val": 0.1}
 CYCLE_INTERVAL = 3600  # Время между циклами в секундах (1 час)
 MOUNTED_PATH = "/mnt/webdav_frames"  # Локальный путь для монтирования WebDAV
-
+FRAMES_PER_SECOND = 1
 
 def download_videos():
     """Загружает видеофайлы из WebDAV."""
@@ -51,15 +51,15 @@ def download_videos():
     print("Downloading done")
 
 
-def extract_frames(video_path):
-    """Разбивает видео на кадры и загружает в WebDAV, извлекая 2 кадра в секунду независимо от FPS."""
+def extract_frames(video_path, frames_per_second=FRAMES_PER_SECOND):
+    """Разбивает видео на кадры и загружает в WebDAV, извлекая заданное количество кадров в секунду."""
 
     # Локальный WebDAV-клиент в каждом процессе
     client = Client(WEBDAV_OPTIONS)
 
     cap = cv2.VideoCapture(video_path)
     fps = cap.get(cv2.CAP_PROP_FPS)
-    frame_interval = max(int(fps / 2), 1)  # Берем 2 кадра в секунду
+    frame_interval = max(int(fps / frames_per_second), 1)  # Интервал кадров
     frame_count = 0
     saved_frame_count = 0
 
@@ -77,9 +77,13 @@ def extract_frames(video_path):
             remote_frame_path = f"/Tracker/Видео выгрузок/104039/Тесты для wb_ls_pipeline/frames/{frame_filename}"
 
             cv2.imwrite(local_frame_path, frame)
-            client.upload_sync(remote_path=remote_frame_path,
-                               local_path=local_frame_path)
-            os.remove(local_frame_path)
+            if os.path.exists(
+                    local_frame_path):  # Проверяем, что файл существует перед загрузкой
+                client.upload_sync(remote_path=remote_frame_path,
+                                   local_path=local_frame_path)
+                os.remove(local_frame_path)
+            else:
+                print(f"Warning: Frame {local_frame_path} was not created.")
 
             saved_frame_count += 1
 
