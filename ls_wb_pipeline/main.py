@@ -92,11 +92,19 @@ def extract_frames(video_path):
 
 def mount_webdav():
     """Монтирует WebDAV папку с кадрами как локальную директорию."""
+    if not os.path.exists(MOUNTED_PATH):
+        try:
+            os.makedirs(MOUNTED_PATH, exist_ok=True)
+        except PermissionError:
+            print(
+                f"Ошибка: Недостаточно прав для создания {MOUNTED_PATH}. Запусти с sudo или измени права.")
+            return
+
     if not os.path.ismount(MOUNTED_PATH):
-        os.makedirs(MOUNTED_PATH, exist_ok=True)
         os.system(
-            f"mount -t davfs {WEBDAV_OPTIONS['webdav_hostname']}/{REMOTE_FRAME_DIR} {MOUNTED_PATH}")
-        print("Mounted WebDAV storage at", MOUNTED_PATH)
+            f"mount -t davfs {WEBDAV_OPTIONS['webdav_hostname']}/{REMOTE_FRAME_DIR} {MOUNTED_PATH}"
+        )
+        print(f"Mounted WebDAV storage at {MOUNTED_PATH}")
 
 
 def import_to_labelstudio():
