@@ -48,6 +48,10 @@ def download_videos():
 
 def extract_frames(video_path):
     """Разбивает видео на кадры и загружает в WebDAV."""
+
+    # Локальный WebDAV-клиент в каждом процессе
+    client = Client(WEBDAV_OPTIONS)
+
     cap = cv2.VideoCapture(video_path)
     frame_count = 0
 
