@@ -114,14 +114,14 @@ def mount_webdav():
 def import_to_labelstudio():
     """Импортирует изображения из смонтированной WebDAV папки в LabelStudio."""
     images = [f for f in os.listdir(MOUNTED_PATH) if f.endswith(".jpg")]
-    tasks = [{"data": {"image": f"/data/{MOUNTED_PATH}/{img}"}} for img in
+    tasks = [{"data": {"image": f"/mnt/webdav_frames/{img}"}} for img in
              images]
-
+    print(tasks)
     headers = {
         "Authorization": f"Token {LABELSTUDIO_TOKEN}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json; charset=utf-8"
     }
-
+    print(json.dumps(tasks, indent=2))
     response = requests.post(LABELSTUDIO_API_URL, headers=headers,
                              data=json.dumps(tasks))
     print("Imported images to LabelStudio:", response.status_code)
