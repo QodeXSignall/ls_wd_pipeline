@@ -73,7 +73,7 @@ def extract_frames(video_path):
 
         if frame_count % frame_interval == 0:  # Сохраняем только каждые frame_interval кадров
             frame_filename = f"{Path(video_path).stem}_{saved_frame_count:06d}.jpg"
-            local_frame_path = os.path.join("misc/frames_temp", frame_filename)
+            local_frame_path = os.path.join(FRAME_DIR_TEMP, frame_filename)
             remote_frame_path = f"/Tracker/Видео выгрузок/104039/Тесты для wb_ls_pipeline/frames/{frame_filename}"
 
             cv2.imwrite(local_frame_path, frame)
