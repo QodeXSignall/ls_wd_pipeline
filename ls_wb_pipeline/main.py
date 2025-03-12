@@ -37,8 +37,11 @@ def download_videos():
     os.makedirs(LOCAL_VIDEO_DIR, exist_ok=True)
 
     for file in files:
+        if not file.lower().endswith(".mp4"):  # Проверяем расширение файла
+            print(f"Skipping {file}, not an MP4 file.")
+            continue
+
         remote_file_path = f"{REMOTE_VIDEO_DIR}/{file}"  # Формируем полный путь
-        print(f"Downloading {remote_file_path}")
         local_path = os.path.join(LOCAL_VIDEO_DIR, os.path.basename(file))
 
         if not os.path.exists(local_path):
