@@ -48,6 +48,7 @@ def download_videos():
             client.download_sync(remote_path=remote_file_path,
                                  local_path=local_path)
             print(f"Downloaded {remote_file_path} to {local_path}")
+    print("Downloading done")
 
 
 def extract_frames(video_path):
