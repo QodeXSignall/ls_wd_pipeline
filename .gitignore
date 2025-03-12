@@ -1,0 +1,39 @@
+# PyCharm project files
+.idea/
+*.iml
+
+# Virtual environment
+venv/
+myenv/
+
+# Compiled Python files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Logs and temporary files
+logs/
+*.log
+
+# XML settings (PyCharm, IDE configs)
+*.xml
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Label Studio data
+label_studio.db
+media/
+
+# WebDAV mounted directory
+/mnt/webdav_frames/
+
+# Video files
+video_files/
+*.mp4
+
+# Frames (local cache before upload)
+frames/
+*.jpg
