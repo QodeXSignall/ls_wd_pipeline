@@ -43,7 +43,7 @@ def download_videos():
 
         remote_file_path = f"{REMOTE_VIDEO_DIR}/{file}"  # Формируем полный путь
         local_path = os.path.join(LOCAL_VIDEO_DIR, os.path.basename(file))
-
+        print(f"Downloading {remote_file_path}")
         if not os.path.exists(local_path):
             client.download_sync(remote_path=remote_file_path,
                                  local_path=local_path)
