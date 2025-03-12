@@ -17,7 +17,9 @@ WEBDAV_OPTIONS = {
 client = Client(WEBDAV_OPTIONS)
 
 # Параметры
-VIDEO_DIR = "/Tracker/Видео выгрузок/104039/Тесты для wb_ls_pipeline/source_videos"
+REMOTE_VIDEO_DIR = "/Tracker/Видео выгрузок/104039/Тесты для wb_ls_pipeline/source_videos"
+LOCAL_VIDEO_DIR = str(Path(
+    __file__).parent / "misc/videos_temp")  # Локальная папка для временных видео
 FRAME_DIR_TEMP = r"C:\Users\faizi\PycharmProjects\Tracker\ls_wb_pipeline\ls_wb_pipeline\misc\frames_temp"
 REMOTE_FRAME_DIR = r"/Tracker/Видео выгрузок/104039/Тесты для wb_ls_pipeline/source_videos"  # Папка для хранения кадров в облаке
 ANNOTATIONS_FILE = "annotations.json"
@@ -30,11 +32,11 @@ MOUNTED_PATH = "/mnt/webdav_frames"  # Локальный путь для мон
 
 def download_videos():
     """Загружает видеофайлы из WebDAV."""
-    files = client.list(VIDEO_DIR)
-    os.makedirs(VIDEO_DIR, exist_ok=True)
+    files = client.list(REMOTE_VIDEO_DIR)
+    os.makedirs(LOCAL_VIDEO_DIR, exist_ok=True)
 
     for file in files:
-        local_path = os.path.join(VIDEO_DIR, os.path.basename(file))
+        local_path = os.path.join(LOCAL_VIDEO_DIR, os.path.basename(file))
         if not os.path.exists(local_path):
             client.download_sync(remote_path=file, local_path=local_path)
             print(f"Downloaded {file}")
@@ -92,7 +94,8 @@ def import_to_labelstudio():
 
 def cleanup_videos():
     """Удаляет локальные видео после обработки."""
-    videos = [os.path.join(VIDEO_DIR, f) for f in os.listdir(VIDEO_DIR) if
+    videos = [os.path.join(LOCAL_VIDEO_DIR, f) for f in
+              os.listdir(LOCAL_VIDEO_DIR) if
               f.endswith(".mp4")]
     for video in videos:
         os.remove(video)
@@ -102,7 +105,8 @@ def cleanup_videos():
 def main():
     while True:
         download_videos()
-        videos = [os.path.join(VIDEO_DIR, f) for f in os.listdir(VIDEO_DIR) if
+        videos = [os.path.join(LOCAL_VIDEO_DIR, f) for f in
+                  os.listdir(LOCAL_VIDEO_DIR) if
                   f.endswith(".mp4")]
 
         with Pool(processes=4) as pool:
