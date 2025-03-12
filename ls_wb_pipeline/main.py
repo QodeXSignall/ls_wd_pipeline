@@ -52,32 +52,42 @@ def download_videos():
 
 
 def extract_frames(video_path):
-    """Разбивает видео на кадры и загружает в WebDAV."""
+    """Разбивает видео на кадры и загружает в WebDAV, извлекая 2 кадра в секунду независимо от FPS."""
 
     # Локальный WebDAV-клиент в каждом процессе
     client = Client(WEBDAV_OPTIONS)
 
     cap = cv2.VideoCapture(video_path)
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    frame_interval = max(int(fps / 2), 1)  # Берем 2 кадра в секунду
     frame_count = 0
-    print(f"Extracting frames from {video_path}")
+    saved_frame_count = 0
+
+    print(
+        f"Extracting frames from {video_path} (FPS: {fps}, Interval: {frame_interval})")
+
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             break
 
-        frame_filename = f"{Path(video_path).stem}_{frame_count:06d}.jpg"
-        local_frame_path = os.path.join(FRAME_DIR_TEMP, frame_filename)
-        remote_frame_path = f"{REMOTE_FRAME_DIR}/{frame_filename}"
+        if frame_count % frame_interval == 0:  # Сохраняем только каждые frame_interval кадров
+            frame_filename = f"{Path(video_path).stem}_{saved_frame_count:06d}.jpg"
+            local_frame_path = os.path.join("misc/frames_temp", frame_filename)
+            remote_frame_path = f"/Tracker/Видео выгрузок/104039/Тесты для wb_ls_pipeline/frames/{frame_filename}"
 
-        cv2.imwrite(local_frame_path, frame)
-        client.upload_sync(remote_path=remote_frame_path,
-                           local_path=local_frame_path)
-        os.remove(local_frame_path)
+            cv2.imwrite(local_frame_path, frame)
+            client.upload_sync(remote_path=remote_frame_path,
+                               local_path=local_frame_path)
+            os.remove(local_frame_path)
+
+            saved_frame_count += 1
 
         frame_count += 1
 
     cap.release()
-    print(f"Extracted and uploaded {frame_count} frames from {video_path}")
+    print(
+        f"Extracted and uploaded {saved_frame_count} frames from {video_path}")
 
 
 def mount_webdav():
