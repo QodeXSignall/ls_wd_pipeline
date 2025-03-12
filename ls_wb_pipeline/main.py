@@ -36,10 +36,13 @@ def download_videos():
     os.makedirs(LOCAL_VIDEO_DIR, exist_ok=True)
 
     for file in files:
+        remote_file_path = f"{REMOTE_VIDEO_DIR}/{file}"  # Формируем полный путь
         local_path = os.path.join(LOCAL_VIDEO_DIR, os.path.basename(file))
+
         if not os.path.exists(local_path):
-            client.download_sync(remote_path=file, local_path=local_path)
-            print(f"Downloaded {file}")
+            client.download_sync(remote_path=remote_file_path,
+                                 local_path=local_path)
+            print(f"Downloaded {remote_file_path} to {local_path}")
 
 
 def extract_frames(video_path):
