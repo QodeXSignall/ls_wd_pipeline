@@ -20,7 +20,8 @@ client = Client(WEBDAV_OPTIONS)
 REMOTE_VIDEO_DIR = "/Tracker/Видео выгрузок/104039/Тесты для wb_ls_pipeline/source_videos"
 LOCAL_VIDEO_DIR = str(Path(
     __file__).parent / "misc/videos_temp")  # Локальная папка для временных видео
-FRAME_DIR_TEMP = r"C:\Users\faizi\PycharmProjects\Tracker\ls_wb_pipeline\ls_wb_pipeline\misc\frames_temp"
+FRAME_DIR_TEMP = str(Path(
+    __file__).parent / "misc/frames_temp")
 REMOTE_FRAME_DIR = r"/Tracker/Видео выгрузок/104039/Тесты для wb_ls_pipeline/source_videos"  # Папка для хранения кадров в облаке
 ANNOTATIONS_FILE = "annotations.json"
 LABELSTUDIO_API_URL = "http://localhost:8081/api/projects/1/import"
