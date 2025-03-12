@@ -22,7 +22,7 @@ LOCAL_VIDEO_DIR = str(Path(
     __file__).parent / "misc/videos_temp")  # Локальная папка для временных видео
 FRAME_DIR_TEMP = str(Path(
     __file__).parent / "misc/frames_temp")
-REMOTE_FRAME_DIR = r"/Tracker/Видео выгрузок/104039/Тесты для wb_ls_pipeline/source_videos"  # Папка для хранения кадров в облаке
+REMOTE_FRAME_DIR = r"/Tracker/Видео выгрузок/104039/Тесты для wb_ls_pipeline/frames"
 ANNOTATIONS_FILE = "annotations.json"
 LABELSTUDIO_API_URL = "http://localhost:8081/api/projects/1/import"
 LABELSTUDIO_TOKEN = os.environ.get("labelstudio_token")
