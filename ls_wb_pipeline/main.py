@@ -111,7 +111,9 @@ def download_videos():
         local_path = os.path.join(LOCAL_VIDEO_DIR, os.path.basename(video))
         logger.info(f"Скачивание {video}")
         try:
-            client.download_sync(remote_path=video, local_path=local_path)
+            temp_path = local_path + ".part"
+            client.download_sync(remote_path=video, local_path=temp_path)
+            os.rename(temp_path, local_path)
             downloaded_videos.add(video)
             logger.info(f"Скачано {video} в {local_path}")
         except Exception as e:
@@ -156,14 +158,25 @@ def get_all_video_files():
 
 def extract_frames(video_path):
     """Разбивает видео на кадры и загружает в WebDAV."""
-    local_client = Client(WEBDAV_OPTIONS)  # Создаем клиент внутри процесса
+    local_client = Client(WEBDAV_OPTIONS)
     cap = cv2.VideoCapture(video_path)
-    fps = cap.get(cv2.CAP_PROP_FPS) or 1.0  # Если fps не определено, ставим 1
+
+    if not cap.isOpened():
+        logger.error(f"Ошибка: Не удалось открыть видео {video_path}")
+        return
+
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    if fps <= 0:
+        logger.error(f"Ошибка: FPS не определен для {video_path}")
+        cap.release()
+        return
+
     frame_interval = max(int(fps / FRAMES_PER_SECOND), 1)
     frame_count = 0
     saved_frame_count = 0
 
-    logger.info(f"Извлекаем кадры из {video_path} (FPS: {fps}, Интервал: {frame_interval})")
+    logger.info(
+        f"Извлекаем кадры из {video_path} (FPS: {fps}, Интервал: {frame_interval})")
 
     while cap.isOpened():
         ret, frame = cap.read()
@@ -177,15 +190,18 @@ def extract_frames(video_path):
 
             cv2.imwrite(local_frame_path, frame)
             if os.path.exists(local_frame_path):
-                local_client.upload_sync(remote_path=remote_frame_path, local_path=local_frame_path)
+                local_client.upload_sync(remote_path=remote_frame_path,
+                                         local_path=local_frame_path)
                 os.remove(local_frame_path)
             else:
-                logger.warning(f"Предупреждение: Кадр {local_frame_path} не был создан.")
+                logger.warning(
+                    f"Предупреждение: Кадр {local_frame_path} не был создан.")
             saved_frame_count += 1
         frame_count += 1
 
     cap.release()
-    logger.info(f"Извлечено и загружено {saved_frame_count} кадров из {video_path}")
+    logger.info(
+        f"Извлечено и загружено {saved_frame_count} кадров из {video_path}")
 
 
 def import_to_labelstudio():
