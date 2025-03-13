@@ -154,17 +154,16 @@ def get_all_video_files():
     return all_videos
 
 
-def extract_frames(video_path, frames_per_second=FRAMES_PER_SECOND):
-    """Разбивает видео на кадры и загружает в WebDAV, извлекая заданное количество кадров в секунду."""
-    client = Client(WEBDAV_OPTIONS)
+def extract_frames(video_path):
+    """Разбивает видео на кадры и загружает в WebDAV."""
+    local_client = Client(WEBDAV_OPTIONS)  # Создаем клиент внутри процесса
     cap = cv2.VideoCapture(video_path)
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    frame_interval = max(int(fps / frames_per_second), 1)
+    fps = cap.get(cv2.CAP_PROP_FPS) or 1.0  # Если fps не определено, ставим 1
+    frame_interval = max(int(fps / FRAMES_PER_SECOND), 1)
     frame_count = 0
     saved_frame_count = 0
 
-    logger.info(
-        f"Извлекаем кадры из {video_path} (FPS: {fps}, Интервал: {frame_interval})")
+    logger.info(f"Извлекаем кадры из {video_path} (FPS: {fps}, Интервал: {frame_interval})")
 
     while cap.isOpened():
         ret, frame = cap.read()
@@ -178,18 +177,15 @@ def extract_frames(video_path, frames_per_second=FRAMES_PER_SECOND):
 
             cv2.imwrite(local_frame_path, frame)
             if os.path.exists(local_frame_path):
-                client.upload_sync(remote_path=remote_frame_path,
-                                   local_path=local_frame_path)
+                local_client.upload_sync(remote_path=remote_frame_path, local_path=local_frame_path)
                 os.remove(local_frame_path)
             else:
-                logger.warning(
-                    f"Предупреждение: Кадр {local_frame_path} не был создан.")
+                logger.warning(f"Предупреждение: Кадр {local_frame_path} не был создан.")
             saved_frame_count += 1
         frame_count += 1
 
     cap.release()
-    logger.info(
-        f"Извлечено и загружено {saved_frame_count} кадров из {video_path}")
+    logger.info(f"Извлечено и загружено {saved_frame_count} кадров из {video_path}")
 
 
 def import_to_labelstudio():
