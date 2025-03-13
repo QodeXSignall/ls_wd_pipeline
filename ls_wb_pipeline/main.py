@@ -187,7 +187,7 @@ def main():
         with Pool(processes=4) as pool:
             pool.map(extract_frames, videos)
         mount_webdav()
-        import_to_labelstudio()
+        import_to_labelstudio_urls()
         logger.info("Цикл завершен. Ожидание...")
         time.sleep(CYCLE_INTERVAL)
 
