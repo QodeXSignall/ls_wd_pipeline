@@ -18,11 +18,19 @@ LOG_FILE = os.path.join(LOG_DIR, "pipeline.log")
 logger = logging.getLogger("PipelineLogger")
 logger.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-handler = TimedRotatingFileHandler(LOG_FILE, when="midnight", interval=1,
-                                   backupCount=30, encoding='utf-8')
-handler.setFormatter(formatter)
-handler.setLevel(logging.INFO)
-logger.addHandler(handler)
+
+# Обработчик для записи логов в файл
+file_handler = TimedRotatingFileHandler(LOG_FILE, when="midnight", interval=1,
+                                        backupCount=30, encoding='utf-8')
+file_handler.setFormatter(formatter)
+file_handler.setLevel(logging.INFO)
+logger.addHandler(file_handler)
+
+# Обработчик для вывода логов в stdout
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(formatter)
+console_handler.setLevel(logging.DEBUG)
+logger.addHandler(console_handler)
 
 # Конфигурация WebDAV
 WEBDAV_OPTIONS = {
