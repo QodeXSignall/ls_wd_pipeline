@@ -65,9 +65,11 @@ if os.path.exists(DOWNLOAD_HISTORY_FILE):
 else:
     downloaded_videos = set()
 
+
 def save_download_history():
     with open(DOWNLOAD_HISTORY_FILE, "w") as f:
         json.dump(list(downloaded_videos), f)
+
 
 def is_mounted():
     """Проверяет, смонтирована ли папка WebDAV."""
@@ -108,11 +110,18 @@ def download_videos():
 
         local_path = os.path.join(LOCAL_VIDEO_DIR, os.path.basename(video))
         logger.info(f"Скачивание {video}")
-        client.download_sync(remote_path=video, local_path=local_path)
-        downloaded_videos.add(video)
-        logger.info(f"Скачано {video} в {local_path}")
+        try:
+            client.download_sync(remote_path=video, local_path=local_path)
+            downloaded_videos.add(video)
+            logger.info(f"Скачано {video} в {local_path}")
+        except Exception as e:
+            logger.error(f"Ошибка при скачивании {video}: {e}")
     save_download_history()
     logger.info("Загрузка завершена")
+
+
+def sanitize_path(path):
+    return path.replace("//", "/")
 
 
 def get_all_video_files():
@@ -121,27 +130,29 @@ def get_all_video_files():
     registrators = client.list(BASE_REMOTE_DIR)
 
     for reg in registrators:
-        reg_path = f"{BASE_REMOTE_DIR}/{reg}"
+        reg_path = sanitize_path(f"{BASE_REMOTE_DIR}/{reg}")
         if not client.is_dir(reg_path):
             continue
 
         date_dirs = client.list(reg_path)
         for date in date_dirs:
-            date_path = f"{reg_path}/{date}"
+            date_path = sanitize_path(f"{reg_path}/{date}")
             if not client.is_dir(date_path):
                 continue
 
             video_dirs = client.list(date_path)
             for vid_dir in video_dirs:
-                video_path = f"{date_path}/{vid_dir}"
+                video_path = sanitize_path(f"{date_path}/{vid_dir}")
                 if not client.is_dir(video_path):
                     continue
 
                 video_files = client.list(video_path)
                 for video in video_files:
                     if video.endswith(".mp4"):
-                        all_videos.append(f"{video_path}/{video}")
+                        all_videos.append(
+                            sanitize_path(f"{video_path}/{video}"))
     return all_videos
+
 
 def extract_frames(video_path, frames_per_second=FRAMES_PER_SECOND):
     """Разбивает видео на кадры и загружает в WebDAV, извлекая заданное количество кадров в секунду."""
@@ -189,7 +200,8 @@ def import_to_labelstudio():
 
     images = client.list(REMOTE_FRAME_DIR)
     images = [img for img in images if img.endswith(".jpg")]
-    tasks = [{"data": {"image": f"file://{MOUNTED_PATH}/{img}"}} for img in images]
+    tasks = [{"data": {"image": f"file://{MOUNTED_PATH}/{img}"}} for img in
+             images]
 
     headers = {
         "Authorization": f"Token {LABELSTUDIO_TOKEN}",
@@ -197,7 +209,8 @@ def import_to_labelstudio():
     }
 
     response = requests.post(LABELSTUDIO_API_URL, headers=headers, json=tasks)
-    logger.info(f"Импортировано изображений в LabelStudio: {response.status_code}")
+    logger.info(
+        f"Импортировано изображений в LabelStudio: {response.status_code}")
 
 
 def main():
