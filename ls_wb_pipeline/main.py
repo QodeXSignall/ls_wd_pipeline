@@ -43,11 +43,11 @@ client = Client(WEBDAV_OPTIONS)
 
 # Параметры
 BASE_URL = r"https://cloud.mail.ru/public/tnYz/VA3qxQgFa"
-REMOTE_VIDEO_DIR = "/Tracker/Видео выгрузок/104039/Тесты для wb_ls_pipeline/source_videos"
+BASE_REMOTE_DIR = "/Tracker/Видео выгрузок"
 LOCAL_VIDEO_DIR = str(Path(
     __file__).parent / "misc/videos_temp")  # Локальная папка для временных видео
 FRAME_DIR_TEMP = str(Path(__file__).parent / "misc/frames_temp")
-REMOTE_FRAME_DIR = "/Tracker/Видео выгрузок/104039/Тесты для wb_ls_pipeline/frames"
+REMOTE_FRAME_DIR = "/Tracker/annotation_frames"
 ANNOTATIONS_FILE = "annotations.json"
 LABELSTUDIO_API_URL = "http://localhost:8081/api/projects/1/import"
 LABELSTUDIO_TOKEN = os.environ.get("labelstudio_token")
@@ -56,7 +56,18 @@ CYCLE_INTERVAL = 3600  # Время между циклами в секунда�
 MOUNTED_PATH = "/mnt/webdav_frames"  # Локальный путь для монтирования WebDAV
 FRAMES_PER_SECOND = 1
 WEBDAV_REMOTE = "webdav:/Tracker/Видео выгрузок/104039/Тесты для wb_ls_pipeline/frames"
+DOWNLOAD_HISTORY_FILE = "downloaded_videos.json"
 
+# Загруженные файлы
+if os.path.exists(DOWNLOAD_HISTORY_FILE):
+    with open(DOWNLOAD_HISTORY_FILE, "r") as f:
+        downloaded_videos = set(json.load(f))
+else:
+    downloaded_videos = set()
+
+def save_download_history():
+    with open(DOWNLOAD_HISTORY_FILE, "w") as f:
+        json.dump(list(downloaded_videos), f)
 
 def is_mounted():
     """Проверяет, смонтирована ли папка WebDAV."""
@@ -86,24 +97,51 @@ def mount_webdav():
 
 
 def download_videos():
-    """Загружает видеофайлы из WebDAV."""
-    files = client.list(REMOTE_VIDEO_DIR)
+    """Загружает новые видеофайлы из WebDAV."""
+    all_videos = get_all_video_files()
     os.makedirs(LOCAL_VIDEO_DIR, exist_ok=True)
 
-    for file in files:
-        if not file.lower().endswith(".mp4"):  # Проверяем расширение файла
-            logger.debug(f"Пропущен {file}, не MP4.")
+    for video in all_videos:
+        if video in downloaded_videos:
+            logger.debug(f"Пропущено {video}, уже скачано.")
             continue
 
-        remote_file_path = f"{REMOTE_VIDEO_DIR}/{file}"
-        local_path = os.path.join(LOCAL_VIDEO_DIR, os.path.basename(file))
-        logger.info(f"Скачивание {remote_file_path}")
-        if not os.path.exists(local_path):
-            client.download_sync(remote_path=remote_file_path,
-                                 local_path=local_path)
-            logger.info(f"Скачано {remote_file_path} в {local_path}")
+        local_path = os.path.join(LOCAL_VIDEO_DIR, os.path.basename(video))
+        logger.info(f"Скачивание {video}")
+        client.download_sync(remote_path=video, local_path=local_path)
+        downloaded_videos.add(video)
+        logger.info(f"Скачано {video} в {local_path}")
+    save_download_history()
     logger.info("Загрузка завершена")
 
+
+def get_all_video_files():
+    """Рекурсивно обходит директорию BASE_REMOTE_DIR и возвращает список всех mp4 файлов."""
+    all_videos = []
+    registrators = client.list(BASE_REMOTE_DIR)
+
+    for reg in registrators:
+        reg_path = f"{BASE_REMOTE_DIR}/{reg}"
+        if not client.is_dir(reg_path):
+            continue
+
+        date_dirs = client.list(reg_path)
+        for date in date_dirs:
+            date_path = f"{reg_path}/{date}"
+            if not client.is_dir(date_path):
+                continue
+
+            video_dirs = client.list(date_path)
+            for vid_dir in video_dirs:
+                video_path = f"{date_path}/{vid_dir}"
+                if not client.is_dir(video_path):
+                    continue
+
+                video_files = client.list(video_path)
+                for video in video_files:
+                    if video.endswith(".mp4"):
+                        all_videos.append(f"{video_path}/{video}")
+    return all_videos
 
 def extract_frames(video_path, frames_per_second=FRAMES_PER_SECOND):
     """Разбивает видео на кадры и загружает в WebDAV, извлекая заданное количество кадров в секунду."""
