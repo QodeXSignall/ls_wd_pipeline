@@ -157,58 +157,68 @@ def get_all_video_files():
 
 
 def extract_frames(video_path):
-    """Разбивает видео на кадры и загружает в WebDAV."""
-    try:
-        local_client = Client(WEBDAV_OPTIONS)
-        cap = cv2.VideoCapture(video_path)
+    """Разбивает видео на кадры и загружает в WebDAV с повторной попыткой при ошибках."""
+    local_client = Client(WEBDAV_OPTIONS)
+    cap = cv2.VideoCapture(video_path)
 
-        if not cap.isOpened():
-            logger.error(f"Ошибка: Не удалось открыть видео {video_path}")
-            return video_path, False  # Возвращаем видео с ошибкой
+    if not cap.isOpened():
+        logger.error(f"Ошибка: Не удалось открыть видео {video_path}")
+        return video_path, False  # Возвращаем видео с ошибкой
 
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        if fps <= 0:
-            logger.error(f"Ошибка: FPS не определен для {video_path}")
-            cap.release()
-            return video_path, False
-
-        frame_interval = max(int(fps / FRAMES_PER_SECOND), 1)
-        frame_count = 0
-        saved_frame_count = 0
-
-        logger.info(f"Извлекаем кадры из {video_path} (FPS: {fps}, Интервал: {frame_interval})")
-
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                break
-
-            if frame_count % frame_interval == 0:
-                frame_filename = f"{Path(video_path).stem}_{saved_frame_count:06d}.jpg"
-                local_frame_path = os.path.join(FRAME_DIR_TEMP, frame_filename)
-                remote_frame_path = f"{REMOTE_FRAME_DIR}/{frame_filename}"
-
-                cv2.imwrite(local_frame_path, frame)
-                if os.path.exists(local_frame_path):
-                    try:
-                        local_client.upload_sync(remote_path=remote_frame_path, local_path=local_frame_path)
-                        os.remove(local_frame_path)
-                    except Exception as e:
-                        logger.error(f"Ошибка при загрузке кадра {frame_filename}: {e}")
-                        cap.release()
-                        return video_path, False
-                else:
-                    logger.warning(f"Предупреждение: Кадр {local_frame_path} не был создан.")
-                saved_frame_count += 1
-            frame_count += 1
-
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    if fps <= 0:
+        logger.error(f"Ошибка: FPS не определен для {video_path}")
         cap.release()
-        logger.info(f"Извлечено и загружено {saved_frame_count} кадров из {video_path}")
-        return video_path, True
-
-    except Exception as e:
-        logger.error(f"Ошибка при обработке видео {video_path}: {e}")
         return video_path, False
+
+    frame_interval = max(int(fps / FRAMES_PER_SECOND), 1)
+    frame_count = 0
+    saved_frame_count = 0
+    max_retries = 3  # Количество повторных попыток при ошибке
+
+    logger.info(
+        f"Извлекаем кадры из {video_path} (FPS: {fps}, Интервал: {frame_interval})")
+
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        if frame_count % frame_interval == 0:
+            frame_filename = f"{Path(video_path).stem}_{saved_frame_count:06d}.jpg"
+            local_frame_path = os.path.join(FRAME_DIR_TEMP, frame_filename)
+            remote_frame_path = f"{REMOTE_FRAME_DIR}/{frame_filename}"
+
+            cv2.imwrite(local_frame_path, frame)
+            if os.path.exists(local_frame_path):
+                success = False
+                for attempt in range(1, max_retries + 1):
+                    try:
+                        local_client.upload_sync(remote_path=remote_frame_path,
+                                                 local_path=local_frame_path)
+                        os.remove(local_frame_path)
+                        success = True
+                        break  # Успешная загрузка, выходим из цикла
+                    except Exception as e:
+                        logger.error(
+                            f"Ошибка при загрузке кадра {frame_filename} (Попытка {attempt}/{max_retries}): {e}")
+                        time.sleep(5)  # Ждем 5 секунд перед повторной попыткой
+
+                if not success:
+                    logger.error(
+                        f"Не удалось загрузить кадр {frame_filename} после {max_retries} попыток.")
+                    cap.release()
+                    return video_path, False
+            else:
+                logger.warning(
+                    f"Предупреждение: Кадр {local_frame_path} не был создан.")
+            saved_frame_count += 1
+        frame_count += 1
+
+    cap.release()
+    logger.info(
+        f"Извлечено и загружено {saved_frame_count} кадров из {video_path}")
+    return video_path, True
 
 
 def import_to_labelstudio():
