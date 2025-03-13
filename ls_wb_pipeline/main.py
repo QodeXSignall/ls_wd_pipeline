@@ -242,6 +242,17 @@ def import_to_labelstudio():
         f"Импортировано изображений в LabelStudio: {response.status_code}")
 
 
+def cleanup_videos():
+    """Удаляет локальные видео после обработки."""
+    logger.info("Удаление локальных видео")
+    videos = [os.path.join(LOCAL_VIDEO_DIR, f) for f in
+              os.listdir(LOCAL_VIDEO_DIR) if
+              f.endswith(".mp4")]
+    for video in videos:
+        os.remove(video)
+        print(f"Deleted {video}")
+
+
 def main():
     logger.info("Запущен основной цикл")
     while True:
@@ -258,6 +269,7 @@ def main():
 
         mount_webdav()
         import_to_labelstudio()
+        cleanup_videos()
         logger.info("Цикл завершен. Ожидание...")
         time.sleep(CYCLE_INTERVAL)
 
