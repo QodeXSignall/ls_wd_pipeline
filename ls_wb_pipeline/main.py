@@ -158,50 +158,57 @@ def get_all_video_files():
 
 def extract_frames(video_path):
     """Разбивает видео на кадры и загружает в WebDAV."""
-    local_client = Client(WEBDAV_OPTIONS)
-    cap = cv2.VideoCapture(video_path)
+    try:
+        local_client = Client(WEBDAV_OPTIONS)
+        cap = cv2.VideoCapture(video_path)
 
-    if not cap.isOpened():
-        logger.error(f"Ошибка: Не удалось открыть видео {video_path}")
-        return
+        if not cap.isOpened():
+            logger.error(f"Ошибка: Не удалось открыть видео {video_path}")
+            return video_path, False  # Возвращаем видео с ошибкой
 
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    if fps <= 0:
-        logger.error(f"Ошибка: FPS не определен для {video_path}")
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        if fps <= 0:
+            logger.error(f"Ошибка: FPS не определен для {video_path}")
+            cap.release()
+            return video_path, False
+
+        frame_interval = max(int(fps / FRAMES_PER_SECOND), 1)
+        frame_count = 0
+        saved_frame_count = 0
+
+        logger.info(f"Извлекаем кадры из {video_path} (FPS: {fps}, Интервал: {frame_interval})")
+
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            if frame_count % frame_interval == 0:
+                frame_filename = f"{Path(video_path).stem}_{saved_frame_count:06d}.jpg"
+                local_frame_path = os.path.join(FRAME_DIR_TEMP, frame_filename)
+                remote_frame_path = f"{REMOTE_FRAME_DIR}/{frame_filename}"
+
+                cv2.imwrite(local_frame_path, frame)
+                if os.path.exists(local_frame_path):
+                    try:
+                        local_client.upload_sync(remote_path=remote_frame_path, local_path=local_frame_path)
+                        os.remove(local_frame_path)
+                    except Exception as e:
+                        logger.error(f"Ошибка при загрузке кадра {frame_filename}: {e}")
+                        cap.release()
+                        return video_path, False
+                else:
+                    logger.warning(f"Предупреждение: Кадр {local_frame_path} не был создан.")
+                saved_frame_count += 1
+            frame_count += 1
+
         cap.release()
-        return
+        logger.info(f"Извлечено и загружено {saved_frame_count} кадров из {video_path}")
+        return video_path, True
 
-    frame_interval = max(int(fps / FRAMES_PER_SECOND), 1)
-    frame_count = 0
-    saved_frame_count = 0
-
-    logger.info(
-        f"Извлекаем кадры из {video_path} (FPS: {fps}, Интервал: {frame_interval})")
-
-    while cap.isOpened():
-        ret, frame = cap.read()
-        if not ret:
-            break
-
-        if frame_count % frame_interval == 0:
-            frame_filename = f"{Path(video_path).stem}_{saved_frame_count:06d}.jpg"
-            local_frame_path = os.path.join(FRAME_DIR_TEMP, frame_filename)
-            remote_frame_path = f"{REMOTE_FRAME_DIR}/{frame_filename}"
-
-            cv2.imwrite(local_frame_path, frame)
-            if os.path.exists(local_frame_path):
-                local_client.upload_sync(remote_path=remote_frame_path,
-                                         local_path=local_frame_path)
-                os.remove(local_frame_path)
-            else:
-                logger.warning(
-                    f"Предупреждение: Кадр {local_frame_path} не был создан.")
-            saved_frame_count += 1
-        frame_count += 1
-
-    cap.release()
-    logger.info(
-        f"Извлечено и загружено {saved_frame_count} кадров из {video_path}")
+    except Exception as e:
+        logger.error(f"Ошибка при обработке видео {video_path}: {e}")
+        return video_path, False
 
 
 def import_to_labelstudio():
@@ -232,7 +239,13 @@ def main():
         videos = [os.path.join(LOCAL_VIDEO_DIR, f) for f in
                   os.listdir(LOCAL_VIDEO_DIR) if f.endswith(".mp4")]
         with Pool(processes=4) as pool:
-            pool.map(extract_frames, videos)
+            results = pool.map(extract_frames, videos)
+
+        failed_videos = [video for video, success in results if not success]
+        if failed_videos:
+            logger.warning(
+                f"Не удалось обработать следующие видео: {failed_videos}")
+
         mount_webdav()
         import_to_labelstudio()
         logger.info("Цикл завершен. Ожидание...")
