@@ -142,6 +142,25 @@ def extract_frames(video_path, frames_per_second=FRAMES_PER_SECOND):
         f"Извлечено и загружено {saved_frame_count} кадров из {video_path}")
 
 
+def import_to_labelstudio():
+    """Импортирует изображения из смонтированной WebDAV папки в LabelStudio."""
+    if not is_mounted():
+        logger.error("Ошибка: WebDAV не смонтирован! Прерываем импорт.")
+        return
+
+    images = [f for f in os.listdir(MOUNTED_PATH) if f.endswith(".jpg")]
+    tasks = [{"data": {"image": f"/mnt/webdav_frames/{img}"}} for img in
+             images]
+
+    headers = {
+        "Authorization": f"Token {LABELSTUDIO_TOKEN}",
+        "Content-Type": "application/json; charset=utf-8"
+    }
+
+    response = requests.post(LABELSTUDIO_API_URL, headers=headers, json=tasks)
+    logger.info(
+        f"Импортировано изображений в LabelStudio: {response.status_code}")
+
 def main():
     logger.info("Запущен основной цикл")
     while True:
@@ -151,6 +170,7 @@ def main():
         with Pool(processes=4) as pool:
             pool.map(extract_frames, videos)
         mount_webdav()
+        import_to_labelstudio()
         logger.info("Цикл завершен. Ожидание...")
         time.sleep(CYCLE_INTERVAL)
 
