@@ -149,9 +149,9 @@ def import_to_labelstudio():
         logger.error("Ошибка: WebDAV не смонтирован! Прерываем импорт.")
         return
 
-    images = [f for f in os.listdir(MOUNTED_PATH) if f.endswith(".jpg")]
-    tasks = [{"data": {"image": f"/mnt/webdav_frames/{img}"}} for img in
-             images]
+    images = client.list(REMOTE_FRAME_DIR)
+    images = [img for img in images if img.endswith(".jpg")]
+    tasks = [{"data": {"image": f"file://{MOUNTED_PATH}/{img}"}} for img in images]
 
     headers = {
         "Authorization": f"Token {LABELSTUDIO_TOKEN}",
@@ -159,8 +159,7 @@ def import_to_labelstudio():
     }
 
     response = requests.post(LABELSTUDIO_API_URL, headers=headers, json=tasks)
-    logger.info(
-        f"Импортировано изображений в LabelStudio: {response.status_code}")
+    logger.info(f"Импортировано изображений в LabelStudio: {response.status_code}")
 
 
 def main():
