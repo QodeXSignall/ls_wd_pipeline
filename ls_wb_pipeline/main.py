@@ -173,6 +173,7 @@ def import_to_labelstudio_urls():
         "Authorization": f"Token {LABELSTUDIO_TOKEN}",
         "Content-Type": "application/json; charset=utf-8"
     }
+    logger.info(f"Отправляем в LabelStudio: {json.dumps(tasks, indent=2, ensure_ascii=False)}")
 
     response = requests.post(LABELSTUDIO_API_URL, headers=headers, json=tasks)
     logger.info(
