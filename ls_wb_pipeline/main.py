@@ -163,22 +163,6 @@ def import_to_labelstudio():
         f"Импортировано изображений в LabelStudio: {response.status_code}")
 
 
-def import_to_labelstudio_urls():
-    """Импортирует изображения в LabelStudio через HTTP-ссылки."""
-    images = client.list(REMOTE_FRAME_DIR)
-    images = [img for img in images if img.endswith(".jpg")]
-    tasks = [{"data": {"image": f"{BASE_URL}/{img}"}} for img in images]
-
-    headers = {
-        "Authorization": f"Token {LABELSTUDIO_TOKEN}",
-        "Content-Type": "application/json; charset=utf-8"
-    }
-    logger.info(f"Отправляем в LabelStudio: {json.dumps(tasks, indent=2, ensure_ascii=False)}")
-
-    response = requests.post(LABELSTUDIO_API_URL, headers=headers, json=tasks)
-    logger.info(
-        f"Импортировано изображений в LabelStudio: {response.status_code}")
-
 def main():
     logger.info("Запущен основной цикл")
     while True:
@@ -188,7 +172,7 @@ def main():
         with Pool(processes=4) as pool:
             pool.map(extract_frames, videos)
         mount_webdav()
-        import_to_labelstudio_urls()
+        import_to_labelstudio()
         logger.info("Цикл завершен. Ожидание...")
         time.sleep(CYCLE_INTERVAL)
 
