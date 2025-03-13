@@ -42,6 +42,7 @@ WEBDAV_OPTIONS = {
 client = Client(WEBDAV_OPTIONS)
 
 # Параметры
+BASE_URL = r"https://cloud.mail.ru/public/tnYz/VA3qxQgFa"
 REMOTE_VIDEO_DIR = "/Tracker/Видео выгрузок/104039/Тесты для wb_ls_pipeline/source_videos"
 LOCAL_VIDEO_DIR = str(Path(
     __file__).parent / "misc/videos_temp")  # Локальная папка для временных видео
@@ -151,6 +152,22 @@ def import_to_labelstudio():
     images = [f for f in os.listdir(MOUNTED_PATH) if f.endswith(".jpg")]
     tasks = [{"data": {"image": f"/mnt/webdav_frames/{img}"}} for img in
              images]
+
+    headers = {
+        "Authorization": f"Token {LABELSTUDIO_TOKEN}",
+        "Content-Type": "application/json; charset=utf-8"
+    }
+
+    response = requests.post(LABELSTUDIO_API_URL, headers=headers, json=tasks)
+    logger.info(
+        f"Импортировано изображений в LabelStudio: {response.status_code}")
+
+
+def import_to_labelstudio_urls():
+    """Импортирует изображения в LabelStudio через HTTP-ссылки."""
+    images = client.list(REMOTE_FRAME_DIR)
+    images = [img for img in images if img.endswith(".jpg")]
+    tasks = [{"data": {"image": f"{BASE_URL}/{img}"}} for img in images]
 
     headers = {
         "Authorization": f"Token {LABELSTUDIO_TOKEN}",
