@@ -42,6 +42,8 @@ WEBDAV_OPTIONS = {
 client = Client(WEBDAV_OPTIONS)
 
 # Параметры
+LABELSTUDIO_URL = "http://localhost"
+LABELSTUDIO_STORAGE_ID = 1
 BASE_URL = r"https://cloud.mail.ru/public/tnYz/VA3qxQgFa"
 BASE_REMOTE_DIR = "/Tracker/Видео выгрузок"
 LOCAL_VIDEO_DIR = str(Path(
@@ -49,7 +51,7 @@ LOCAL_VIDEO_DIR = str(Path(
 FRAME_DIR_TEMP = str(Path(__file__).parent / "misc/frames_temp")
 REMOTE_FRAME_DIR = "/Tracker/annotation_frames"
 ANNOTATIONS_FILE = "annotations.json"
-LABELSTUDIO_API_URL = "http://localhost:8081/api/projects/1/import"
+LABELSTUDIO_API_URL = f"{LABELSTUDIO_URL}:8081/api/projects/1/import"
 LABELSTUDIO_TOKEN = os.environ.get("labelstudio_token")
 DATASET_SPLIT = {"train": 0.7, "test": 0.2, "val": 0.1}
 CYCLE_INTERVAL = 3600  # Время между циклами в секундах (1 час)
@@ -253,6 +255,25 @@ def cleanup_videos():
         print(f"Deleted {video}")
 
 
+def sync_label_studio_storage():
+    """
+    Функция для синхронизации локального хранилища в Label Studio через API.
+
+    :return: Результат синхронизации (True - успех, False - ошибка)
+    """
+    sync_url = f"{LABELSTUDIO_URL}/api/storages/localfiles/{LABELSTUDIO_STORAGE_ID}/sync"
+    headers = {"Authorization": f"Token {LABELSTUDIO_TOKEN}"}
+
+    response = requests.post(sync_url, headers=headers)
+
+    if response.status_code == 200:
+        logger.info("Хранилище успешно синхронизовано")
+        return True
+    else:
+        logger.info(f"Результат синхронизации: {response.text}")
+        return False
+
+
 def main():
     logger.info("Запущен основной цикл")
     while True:
@@ -270,6 +291,7 @@ def main():
         mount_webdav()
         import_to_labelstudio()
         cleanup_videos()
+        sync_label_studio_storage()
         logger.info("Цикл завершен. Ожидание...")
         time.sleep(CYCLE_INTERVAL)
 
