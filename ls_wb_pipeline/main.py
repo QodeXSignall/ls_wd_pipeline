@@ -45,7 +45,6 @@ client = Client(WEBDAV_OPTIONS)
 LABELSTUDIO_HOST = "http://localhost"
 LABELSTUDIO_PORT = 8081
 LABELSTUDIO_STORAGE_ID = 1
-BASE_URL = r"https://cloud.mail.ru/public/tnYz/VA3qxQgFa"
 BASE_REMOTE_DIR = "/Tracker/Видео выгрузок"
 LOCAL_VIDEO_DIR = str(Path(
     __file__).parent / "misc/videos_temp")  # Локальная папка для временных видео
@@ -232,7 +231,7 @@ def import_to_labelstudio():
 
     images = client.list(REMOTE_FRAME_DIR)
     images = [img for img in images if img.endswith(".jpg")]
-    tasks = [{"data": {"image": f"file://{MOUNTED_PATH}/{img}"}} for img in
+    tasks = [{"data": {"image": f"url://{MOUNTED_PATH}/{img}"}} for img in
              images]
 
     headers = {
@@ -263,7 +262,7 @@ def sync_label_studio_storage():
     :return: Результат синхронизации (True - успех, False - ошибка)
     """
     sync_url = f"{LABELSTUDIO_HOST}:{LABELSTUDIO_PORT}/api/storages/localfiles/{LABELSTUDIO_STORAGE_ID}/sync"
-    headers = {"Authorization": f"Token {LABELSTUDIO_TOKEN}"}
+    headers = {"Authorization": f"Token {LABELSTUDIO_TOKEN}",}
 
     response = requests.post(sync_url, headers=headers)
 
@@ -290,9 +289,9 @@ def main():
                 f"Не удалось обработать следующие видео: {failed_videos}")
 
         mount_webdav()
-        import_to_labelstudio()
-        cleanup_videos()
+        #import_to_labelstudio()
         sync_label_studio_storage()
+        cleanup_videos()
         logger.info("Цикл завершен. Ожидание...")
         time.sleep(CYCLE_INTERVAL)
 
