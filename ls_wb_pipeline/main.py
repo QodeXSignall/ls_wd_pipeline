@@ -72,7 +72,6 @@ def save_download_history():
     with open(DOWNLOAD_HISTORY_FILE, "w") as f:
         json.dump(list(downloaded_videos), f)
 
-
 def is_mounted():
     """Проверяет, смонтирована ли папка WebDAV."""
     output = subprocess.run(["mount"], capture_output=True, text=True)
@@ -100,8 +99,33 @@ def mount_webdav():
         logger.error(f"Ошибка при монтировании WebDAV: {e}")
 
 
+def remount_webdav():
+    """Пытается перемонтировать WebDAV, если он отключился."""
+    if is_mounted():
+        return
+
+    logger.warning("WebDAV отключен. Перемонтируем...")
+    subprocess.run(["fusermount", "-u", MOUNTED_PATH], check=False)
+    time.sleep(2)
+
+    try:
+        os.makedirs(MOUNTED_PATH, exist_ok=True)
+        subprocess.run(
+            ["rclone", "mount", WEBDAV_REMOTE, MOUNTED_PATH, "--daemon",
+             "--no-modtime"], check=True)
+        time.sleep(3)  # Даем время на монтирование
+        if is_mounted():
+            logger.info("WebDAV успешно перемонтирован.")
+        else:
+            logger.error(
+                "Ошибка: WebDAV не смонтирован после попытки перемонтирования.")
+    except Exception as e:
+        logger.error(f"Ошибка при монтировании WebDAV: {e}")
+
+
 def download_videos():
     """Загружает новые видеофайлы из WebDAV."""
+    remount_webdav()
     all_videos = get_all_video_files()
     os.makedirs(LOCAL_VIDEO_DIR, exist_ok=True)
 
@@ -222,28 +246,6 @@ def extract_frames(video_path):
         f"Извлечено и загружено {saved_frame_count} кадров из {video_path}")
     return video_path, True
 
-
-def import_to_labelstudio():
-    """Импортирует изображения из смонтированной WebDAV папки в LabelStudio."""
-    if not is_mounted():
-        logger.error("Ошибка: WebDAV не смонтирован! Прерываем импорт.")
-        return
-
-    images = client.list(REMOTE_FRAME_DIR)
-    images = [img for img in images if img.endswith(".jpg")]
-    tasks = [{"data": {"image": f"url://{MOUNTED_PATH}/{img}"}} for img in
-             images]
-
-    headers = {
-        "Authorization": f"Token {LABELSTUDIO_TOKEN}",
-        "Content-Type": "application/json; charset=utf-8"
-    }
-
-    response = requests.post(LABELSTUDIO_API_URL, headers=headers, json=tasks)
-    logger.info(
-        f"Импортировано изображений в LabelStudio: {response.status_code}")
-
-
 def cleanup_videos():
     """Удаляет локальные видео после обработки."""
     logger.info("Удаление локальных видео")
@@ -261,6 +263,7 @@ def sync_label_studio_storage():
 
     :return: Результат синхронизации (True - успех, False - ошибка)
     """
+    remount_webdav()
     sync_url = f"{LABELSTUDIO_HOST}:{LABELSTUDIO_PORT}/api/storages/localfiles/{LABELSTUDIO_STORAGE_ID}/sync"
     headers = {"Authorization": f"Token {LABELSTUDIO_TOKEN}",}
 
