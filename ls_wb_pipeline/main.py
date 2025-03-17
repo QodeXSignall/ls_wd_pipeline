@@ -161,7 +161,11 @@ def normalize_video_structure():
 
                 # Перемещаем видео в новую папку
                 new_video_path = os.path.join(video_folder, video)
-                client.move(sanitize_path(video_path), sanitize_path(new_video_path), safe=True)
+                try:
+                    client.move(sanitize_path(video_path), sanitize_path(new_video_path))
+                    print(f"✅ {video} перемещён в {video_folder}")
+                except Exception as e:
+                    print(f"❌ Ошибка перемещения {video}: {e}")
 
                 # Создаём before_pics/ и after_pics/
                 before_pics = os.path.join(video_folder, "before_pics")
@@ -172,7 +176,8 @@ def normalize_video_structure():
                 if not client.check(sanitize_path(after_pics)):
                     client.mkdir(sanitize_path(after_pics))
 
-                print(f"✅ {video} перемещён в {video_folder} и созданы before_pics/, after_pics/")
+                print(f"✅ Созданы before_pics/ и after_pics/ в {video_folder}")
+
 
 def download_videos():
     """Загружает новые видеофайлы из WebDAV."""
