@@ -72,6 +72,7 @@ def save_download_history():
     with open(DOWNLOAD_HISTORY_FILE, "w") as f:
         json.dump(list(downloaded_videos), f)
 
+
 def is_mounted():
     """Проверяет, смонтирована ли папка WebDAV."""
     output = subprocess.run(["mount"], capture_output=True, text=True)
@@ -121,6 +122,53 @@ def remount_webdav():
                 "Ошибка: WebDAV не смонтирован после попытки перемонтирования.")
     except Exception as e:
         logger.error(f"Ошибка при монтировании WebDAV: {e}")
+
+
+def normalize_directory_structure():
+    """Приводит структуры папок 104039/ и 2024050601/ к стандартному формату, как у 118270348452/."""
+    registrators = client.list(BASE_REMOTE_DIR)
+    import re
+    for reg in registrators:
+        reg_path = sanitize_path(f"{BASE_REMOTE_DIR}/{reg}")
+        if not client.is_dir(reg_path) or reg == "118270348452":
+            continue  # Пропускаем правильную структуру
+
+        date_dirs = client.list(reg_path)
+        for date in date_dirs:
+            date_path = sanitize_path(f"{reg_path}/{date}")
+            if not client.is_dir(date_path):
+                continue
+
+            video_files = client.list(date_path)
+            for video in video_files:
+                if not video.endswith(".mp4"):
+                    continue  # Пропускаем не-видео файлы
+
+                old_video_path = sanitize_path(f"{date_path}/{video}")
+
+                # Разбираем имя файла для получения временного диапазона
+                match = re.search(
+                    r"(\d{4,})\s(\d{4}\.\d{1,2}\.\d{1,2})\s(\d+-\d+-\d+)\s(\d+-\d+-\d+)\.mp4",
+                    video)
+                if not match:
+                    continue  # Если формат имени не совпадает, пропускаем
+
+                registrator_id, date_str, start_time, end_time = match.groups()
+                new_dir_name = f"{registrator_id}_{date_str} {start_time}_{end_time}"
+                new_dir_path = sanitize_path(f"{date_path}/{new_dir_name}")
+
+                # Создаём новую папку и подпапки, если их нет
+                if not client.check(new_dir_path):
+                    client.mkdir(new_dir_path)
+                    client.mkdir(sanitize_path(f"{new_dir_path}/before_pics"))
+                    client.mkdir(sanitize_path(f"{new_dir_path}/after_pics"))
+
+                # Перемещаем видео в новую структуру
+                new_video_path = sanitize_path(f"{new_dir_path}/{video}")
+                client.move(remote_path_from=old_video_path,
+                            remote_path_to=new_video_path)
+
+                print(f"Перемещено: {old_video_path} -> {new_video_path}")
 
 
 def download_videos():
@@ -246,6 +294,7 @@ def extract_frames(video_path):
         f"Извлечено и загружено {saved_frame_count} кадров из {video_path}")
     return video_path, True
 
+
 def cleanup_videos():
     """Удаляет локальные видео после обработки."""
     logger.info("Удаление локальных видео")
@@ -265,7 +314,7 @@ def sync_label_studio_storage():
     """
     remount_webdav()
     sync_url = f"{LABELSTUDIO_HOST}:{LABELSTUDIO_PORT}/api/storages/localfiles/{LABELSTUDIO_STORAGE_ID}/sync"
-    headers = {"Authorization": f"Token {LABELSTUDIO_TOKEN}",}
+    headers = {"Authorization": f"Token {LABELSTUDIO_TOKEN}", }
 
     response = requests.post(sync_url, headers=headers)
 
@@ -280,6 +329,7 @@ def sync_label_studio_storage():
 def main():
     logger.info("Запущен основной цикл")
     while True:
+        normalize_directory_structure()
         download_videos()
         videos = [os.path.join(LOCAL_VIDEO_DIR, f) for f in
                   os.listdir(LOCAL_VIDEO_DIR) if f.endswith(".mp4")]
@@ -292,7 +342,8 @@ def main():
                 f"Не удалось обработать следующие видео: {failed_videos}")
 
         mount_webdav()
-        #import_to_labelstudio()
+        # import_to_labelstudio()
+
         sync_label_studio_storage()
         cleanup_videos()
         logger.info("Цикл завершен. Ожидание...")
