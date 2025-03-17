@@ -6,6 +6,7 @@ import requests
 import subprocess
 import logging
 from logging.handlers import TimedRotatingFileHandler
+from urllib.parse import quote
 from multiprocessing import Pool
 from webdav3.client import Client
 from pathlib import Path
@@ -125,50 +126,59 @@ def remount_webdav():
 
 
 def normalize_directory_structure():
-    """Приводит структуры папок 104039/ и 2024050601/ к стандартному формату, как у 118270348452/."""
+    """Приводит структуру папок к нужному формату через WebDAV."""
     registrators = client.list(BASE_REMOTE_DIR)
-    import re
+
     for reg in registrators:
         reg_path = sanitize_path(f"{BASE_REMOTE_DIR}/{reg}")
-        if not client.is_dir(reg_path) or reg == "118270348452":
-            continue  # Пропускаем правильную структуру
+        if not client.is_dir(reg_path):
+            continue
 
         date_dirs = client.list(reg_path)
+
         for date in date_dirs:
             date_path = sanitize_path(f"{reg_path}/{date}")
             if not client.is_dir(date_path):
                 continue
 
             video_files = client.list(date_path)
+
+            # Проверяем, есть ли уже правильная структура
             for video in video_files:
-                if not video.endswith(".mp4"):
-                    continue  # Пропускаем не-видео файлы
+                video_path = sanitize_path(f"{date_path}/{video}")
 
-                old_video_path = sanitize_path(f"{date_path}/{video}")
+                if client.is_dir(video_path):
+                    # Пропускаем, если уже директория
+                    continue
 
-                # Разбираем имя файла для получения временного диапазона
-                match = re.search(
-                    r"(\d{4,})\s(\d{4}\.\d{1,2}\.\d{1,2})\s(\d+-\d+-\d+)\s(\d+-\d+-\d+)\.mp4",
-                    video)
-                if not match:
-                    continue  # Если формат имени не совпадает, пропускаем
+                # Извлекаем номер регистратора и дату из имени файла
+                parts = video.split()
+                if len(parts) < 2:
+                    print(f"Пропущен файл {video} — неправильный формат имени")
+                    continue
 
-                registrator_id, date_str, start_time, end_time = match.groups()
-                new_dir_name = f"{registrator_id}_{date_str} {start_time}_{end_time}"
-                new_dir_path = sanitize_path(f"{date_path}/{new_dir_name}")
+                reg_number = parts[0]
+                date_part = parts[1]
 
-                # Создаём новую папку и подпапки, если их нет
+                # Новый путь для видео (создаём папку, если её нет)
+                new_dir_path = sanitize_path(f"{reg_path}/{date}/videos")
                 if not client.check(new_dir_path):
                     client.mkdir(new_dir_path)
-                    client.mkdir(sanitize_path(f"{new_dir_path}/before_pics"))
-                    client.mkdir(sanitize_path(f"{new_dir_path}/after_pics"))
 
-                # Перемещаем видео в новую структуру
                 new_video_path = sanitize_path(f"{new_dir_path}/{video}")
-                client.move(remote_path_from=old_video_path,
-                            remote_path_to=new_video_path)
 
-                print(f"Перемещено: {old_video_path} -> {new_video_path}")
+                # Проверяем, существует ли файл перед перемещением
+                if not client.check(video_path):
+                    print(f"Файл {video_path} не найден, пропускаем.")
+                    continue
+
+                # Перемещаем файл в правильную папку
+                try:
+                    client.move(remote_path_from=quote(video_path),
+                                remote_path_to=quote(new_video_path))
+                    print(f"Файл {video} перемещён в {new_video_path}")
+                except Exception as e:
+                    print(f"Ошибка при перемещении {video}: {e}")
 
 
 def download_videos():
