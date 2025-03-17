@@ -124,63 +124,6 @@ def remount_webdav():
     except Exception as e:
         logger.error(f"Ошибка при монтировании WebDAV: {e}")
 
-
-
-import urllib.parse
-
-
-def normalize_video_structure():
-    registrators = client.list(BASE_REMOTE_DIR)
-
-    for reg in registrators:
-        reg_path = os.path.join(BASE_REMOTE_DIR, reg)
-        if not client.is_dir(reg_path):
-            continue
-
-        date_dirs = client.list(reg_path)
-        for date in date_dirs:
-            date_path = os.path.join(reg_path, date)
-            if not client.is_dir(date_path):
-                continue
-
-            video_files = client.list(date_path)
-            for video in video_files:
-                video_path = os.path.join(date_path, video)
-                if client.is_dir(video_path) or not video.endswith(".mp4"):
-                    continue  # Пропускаем папки и не mp4 файлы
-
-                # Проверяем, существует ли файл
-                if not client.check(sanitize_path(video_path)):
-                    print(f"❌ Файл не найден: {video_path}, пропускаем")
-                    continue
-
-                # Создаём папку с названием видео
-                video_folder = os.path.join(date_path, os.path.splitext(video)[0])
-                if not client.check(sanitize_path(video_folder)):
-                    client.mkdir(sanitize_path(video_folder))
-
-                # Перемещаем видео в новую папку
-                new_video_path = os.path.join(video_folder, video)
-                print(sanitize_path(video_path), "->",
-                      sanitize_path(new_video_path))
-                try:
-                    client.move(sanitize_path(video_path), sanitize_path(new_video_path))
-                    print(f"✅ {video} перемещён в {video_folder}")
-                except Exception as e:
-                    print(f"❌ Ошибка перемещения {video}: {e}")
-
-                # Создаём before_pics/ и after_pics/
-                before_pics = os.path.join(video_folder, "before_pics")
-                after_pics = os.path.join(video_folder, "after_pics")
-
-                if not client.check(sanitize_path(before_pics)):
-                    client.mkdir(sanitize_path(before_pics))
-                if not client.check(sanitize_path(after_pics)):
-                    client.mkdir(sanitize_path(after_pics))
-
-                print(f"✅ Созданы before_pics/ и after_pics/ в {video_folder}")
-
-
 def download_videos():
     """Загружает новые видеофайлы из WebDAV."""
     remount_webdav()
@@ -211,32 +154,20 @@ def sanitize_path(path):
 
 
 def get_all_video_files():
-    """Рекурсивно обходит директорию BASE_REMOTE_DIR и возвращает список всех mp4 файлов."""
+    """Рекурсивно обходит всю директорию BASE_REMOTE_DIR и возвращает список всех mp4 файлов, игнорируя структуру."""
     all_videos = []
-    registrators = client.list(BASE_REMOTE_DIR)
 
-    for reg in registrators:
-        reg_path = sanitize_path(f"{BASE_REMOTE_DIR}/{reg}")
-        if not client.is_dir(reg_path):
-            continue
+    def traverse_directory(path):
+        """Рекурсивный обход директории."""
+        items = client.list(path)
+        for item in items:
+            item_path = sanitize_path(f"{path}/{item}")
+            if client.is_dir(item_path):
+                traverse_directory(item_path)  # Рекурсивно идем внутрь
+            elif item.endswith(".mp4"):
+                all_videos.append(item_path)  # Добавляем mp4-файл
 
-        date_dirs = client.list(reg_path)
-        for date in date_dirs:
-            date_path = sanitize_path(f"{reg_path}/{date}")
-            if not client.is_dir(date_path):
-                continue
-
-            video_dirs = client.list(date_path)
-            for vid_dir in video_dirs:
-                video_path = sanitize_path(f"{date_path}/{vid_dir}")
-                if not client.is_dir(video_path):
-                    continue
-
-                video_files = client.list(video_path)
-                for video in video_files:
-                    if video.endswith(".mp4"):
-                        all_videos.append(
-                            sanitize_path(f"{video_path}/{video}"))
+    traverse_directory(BASE_REMOTE_DIR)
     return all_videos
 
 
@@ -339,7 +270,6 @@ def sync_label_studio_storage():
 def main():
     logger.info("Запущен основной цикл")
     while True:
-        normalize_video_structure()
         download_videos()
         videos = [os.path.join(LOCAL_VIDEO_DIR, f) for f in
                   os.listdir(LOCAL_VIDEO_DIR) if f.endswith(".mp4")]
