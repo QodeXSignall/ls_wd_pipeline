@@ -146,29 +146,31 @@ def normalize_video_structure():
             video_files = client.list(date_path)
             for video in video_files:
                 video_path = os.path.join(date_path, video)
-                if client.is_dir(video_path):
-                    continue  # Пропускаем папки, обрабатываем только файлы
+                if client.is_dir(video_path) or not video.endswith(".mp4"):
+                    continue  # Пропускаем папки и не mp4 файлы
 
-                if not video.endswith(".mp4"):
-                    continue  # Оставляем только видеофайлы
+                # Проверяем, существует ли файл
+                if not client.check(sanitize_path(video_path)):
+                    print(f"❌ Файл не найден: {video_path}, пропускаем")
+                    continue
 
                 # Создаём папку с названием видео
                 video_folder = os.path.join(date_path, os.path.splitext(video)[0])
-                if not client.check(video_folder):
-                    client.mkdir(video_folder)
+                if not client.check(sanitize_path(video_folder)):
+                    client.mkdir(sanitize_path(video_folder))
 
                 # Перемещаем видео в новую папку
                 new_video_path = os.path.join(video_folder, video)
-                client.move(video_path, new_video_path)
+                client.move(sanitize_path(video_path), sanitize_path(new_video_path), safe=True)
 
                 # Создаём before_pics/ и after_pics/
                 before_pics = os.path.join(video_folder, "before_pics")
                 after_pics = os.path.join(video_folder, "after_pics")
 
-                if not client.check(before_pics):
-                    client.mkdir(before_pics)
-                if not client.check(after_pics):
-                    client.mkdir(after_pics)
+                if not client.check(sanitize_path(before_pics)):
+                    client.mkdir(sanitize_path(before_pics))
+                if not client.check(sanitize_path(after_pics)):
+                    client.mkdir(sanitize_path(after_pics))
 
                 print(f"✅ {video} перемещён в {video_folder} и созданы before_pics/, after_pics/")
 
