@@ -330,7 +330,7 @@ def sync_label_studio_storage():
 def main():
     logger.info("Запущен основной цикл")
     while True:
-        normalize_directory_structure()
+        normalize_video_structure()
         download_videos()
         videos = [os.path.join(LOCAL_VIDEO_DIR, f) for f in
                   os.listdir(LOCAL_VIDEO_DIR) if f.endswith(".mp4")]
