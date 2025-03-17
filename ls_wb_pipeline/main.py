@@ -125,6 +125,8 @@ def remount_webdav():
         logger.error(f"Ошибка при монтировании WebDAV: {e}")
 
 
+from urllib.parse import quote
+
 def normalize_directory_structure():
     """Приводит структуру папок к нужному формату через WebDAV."""
     registrators = client.list(BASE_REMOTE_DIR)
@@ -149,8 +151,13 @@ def normalize_directory_structure():
                 if client.is_dir(video_path):
                     continue  # Пропускаем, если уже директория
 
-                # Проверяем, не закодирован ли путь уже
-                decoded_video_path = unquote(video_path)
+                # **Проверка существования файла**
+                if not client.check(video_path):
+                    print(f"Файл {video_path} не найден на сервере, пропускаем.")
+                    continue
+
+                # **Используем quote() только если есть пробелы или кириллица**
+                safe_video_path = quote(video_path) if any(ord(c) > 127 for c in video_path) else video_path
 
                 # Создаём нужную структуру
                 new_dir_path = sanitize_path(f"{reg_path}/{date}/videos")
@@ -159,13 +166,9 @@ def normalize_directory_structure():
 
                 new_video_path = sanitize_path(f"{new_dir_path}/{video}")
 
-                if not client.check(decoded_video_path):
-                    print(f"Файл {decoded_video_path} не найден, пропускаем.")
-                    continue
-
-                # Перемещаем файл
+                # **Перемещаем файл**
                 try:
-                    client.move(remote_path_from=decoded_video_path, remote_path_to=new_video_path)
+                    client.move(remote_path_from=safe_video_path, remote_path_to=new_video_path)
                     print(f"Файл {video} перемещён в {new_video_path}")
                 except Exception as e:
                     print(f"Ошибка при перемещении {video}: {e}")
