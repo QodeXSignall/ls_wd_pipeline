@@ -161,6 +161,8 @@ def normalize_video_structure():
 
                 # Перемещаем видео в новую папку
                 new_video_path = os.path.join(video_folder, video)
+                print(sanitize_path(video_path), "->",
+                      sanitize_path(new_video_path))
                 try:
                     client.move(sanitize_path(video_path), sanitize_path(new_video_path))
                     print(f"✅ {video} перемещён в {video_folder}")
