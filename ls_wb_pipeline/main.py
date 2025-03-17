@@ -126,6 +126,8 @@ def remount_webdav():
 
 
 
+import urllib.parse
+
 def normalize_directory_structure():
     """Приводит структуру папок к нужному формату через WebDAV."""
     registrators = client.list(BASE_REMOTE_DIR)
@@ -147,13 +149,16 @@ def normalize_directory_structure():
             for video in video_files:
                 video_path = sanitize_path(f"{date_path}/{video}")
 
-                # Проверяем, что файл действительно есть
-                existing_files = client.list(date_path)
-                if video not in existing_files:
-                    print(f"❌ Файл {video} не найден в `client.list()`, пропускаем.")
+                # Декодируем путь
+                decoded_path = urllib.parse.unquote(video_path)
+
+                # Проверяем наличие файла
+                existing_files = [urllib.parse.unquote(f) for f in client.list(date_path)]
+                if decoded_path not in existing_files:
+                    print(f"❌ Файл {decoded_path} не найден в `client.list()`, пропускаем.")
                     continue
 
-                # Нормализуем путь
+                # Создаём папку `videos`, если её нет
                 new_dir_path = sanitize_path(f"{reg_path}/{date}/videos")
                 if not client.check(new_dir_path):
                     client.mkdir(new_dir_path)
@@ -161,7 +166,7 @@ def normalize_directory_structure():
                 new_video_path = sanitize_path(f"{new_dir_path}/{video}")
 
                 # Логируем перед move()
-                print(f"🔄 Перемещаем: {video_path} -> {new_video_path}")
+                print(f"🔄 Перемещаем: {decoded_path} -> {new_video_path}")
 
                 try:
                     client.move(remote_path_from=video_path, remote_path_to=new_video_path)
