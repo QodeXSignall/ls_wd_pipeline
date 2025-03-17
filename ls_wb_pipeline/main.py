@@ -129,45 +129,48 @@ def remount_webdav():
 import urllib.parse
 
 
-def normalize_directory_structure():
-    """Приводит структуру папок к нужному формату через WebDAV."""
+def normalize_video_structure():
     registrators = client.list(BASE_REMOTE_DIR)
-    print(f"📁 Список регистраторов: {registrators}")
 
     for reg in registrators:
-        reg_path = sanitize_path(f"{BASE_REMOTE_DIR}/{reg}")
+        reg_path = os.path.join(BASE_REMOTE_DIR, reg)
         if not client.is_dir(reg_path):
             continue
 
         date_dirs = client.list(reg_path)
-        print(f"📂 Даты в {reg}: {date_dirs}")
-
         for date in date_dirs:
-            date_path = sanitize_path(f"{reg_path}/{date}")
+            date_path = os.path.join(reg_path, date)
             if not client.is_dir(date_path):
                 continue
 
-            # 🔥 Список файлов ДО обработки
-            existing_files = client.list(date_path)
-            print(f"📄 Файлы в {date_path}: {existing_files}")
+            video_files = client.list(date_path)
+            for video in video_files:
+                video_path = os.path.join(date_path, video)
+                if client.is_dir(video_path):
+                    continue  # Пропускаем папки, обрабатываем только файлы
 
-            for video in existing_files:
-                #video_path = sanitize_path(f"{date_path}/{video}")
-                video_path = f"{date_path}/{video}"
-                # Создаём `videos/`, если её нет
-                new_dir_path = sanitize_path(f"{date_path}/videos")
-                if not client.check(new_dir_path):
-                    client.mkdir(new_dir_path)
+                if not video.endswith(".mp4"):
+                    continue  # Оставляем только видеофайлы
 
-                new_video_path = sanitize_path(f"{new_dir_path}/{video}")
+                # Создаём папку с названием видео
+                video_folder = os.path.join(date_path, os.path.splitext(video)[0])
+                if not client.check(video_folder):
+                    client.mkdir(video_folder)
 
-                print(f"🔄 Перемещаем: {video_path} -> {new_video_path}")
+                # Перемещаем видео в новую папку
+                new_video_path = os.path.join(video_folder, video)
+                client.move(video_path, new_video_path)
 
-                try:
-                    client.move(remote_path_from=video_path, remote_path_to=new_video_path)
-                    print(f"✅ Файл перемещён: {new_video_path}")
-                except Exception as e:
-                    print(f"❌ Ошибка при перемещении {video}: {e}")
+                # Создаём before_pics/ и after_pics/
+                before_pics = os.path.join(video_folder, "before_pics")
+                after_pics = os.path.join(video_folder, "after_pics")
+
+                if not client.check(before_pics):
+                    client.mkdir(before_pics)
+                if not client.check(after_pics):
+                    client.mkdir(after_pics)
+
+                print(f"✅ {video} перемещён в {video_folder} и созданы before_pics/, after_pics/")
 
 def download_videos():
     """Загружает новые видеофайлы из WebDAV."""
