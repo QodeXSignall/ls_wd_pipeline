@@ -125,7 +125,6 @@ def remount_webdav():
         logger.error(f"Ошибка при монтировании WebDAV: {e}")
 
 
-from urllib.parse import quote
 
 def normalize_directory_structure():
     """Приводит структуру папок к нужному формату через WebDAV."""
@@ -148,16 +147,20 @@ def normalize_directory_structure():
             for video in video_files:
                 video_path = sanitize_path(f"{date_path}/{video}")
 
+                # Логируем путь перед проверкой
+                print(f"Проверяем: {video_path}")
+
                 if client.is_dir(video_path):
                     continue  # Пропускаем, если уже директория
 
-                # **Проверка существования файла**
-                if not client.check(video_path):
-                    print(f"Файл {video_path} не найден на сервере, пропускаем.")
+                # **Проверяем, есть ли файл через `client.list()`**
+                existing_files = client.list(date_path)
+                if video not in existing_files:
+                    print(f"Файл {video} отсутствует в `client.list()`, пропускаем.")
                     continue
 
-                # **Используем quote() только если есть пробелы или кириллица**
-                safe_video_path = quote(video_path) if any(ord(c) > 127 for c in video_path) else video_path
+                # **Используем `quote()` для всего пути**
+                safe_video_path = quote(video_path, safe="/")
 
                 # Создаём нужную структуру
                 new_dir_path = sanitize_path(f"{reg_path}/{date}/videos")
@@ -165,13 +168,17 @@ def normalize_directory_structure():
                     client.mkdir(new_dir_path)
 
                 new_video_path = sanitize_path(f"{new_dir_path}/{video}")
+                safe_new_video_path = quote(new_video_path, safe="/")
+
+                # Логируем перед `move()`
+                print(f"Перемещаем: {safe_video_path} -> {safe_new_video_path}")
 
                 # **Перемещаем файл**
                 try:
-                    client.move(remote_path_from=safe_video_path, remote_path_to=new_video_path)
-                    print(f"Файл {video} перемещён в {new_video_path}")
+                    client.move(remote_path_from=safe_video_path, remote_path_to=safe_new_video_path)
+                    print(f"✅ Файл {video} перемещён в {new_video_path}")
                 except Exception as e:
-                    print(f"Ошибка при перемещении {video}: {e}")
+                    print(f"❌ Ошибка при перемещении {video}: {e}")
 
 def download_videos():
     """Загружает новые видеофайлы из WebDAV."""
