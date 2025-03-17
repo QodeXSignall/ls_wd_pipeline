@@ -6,7 +6,7 @@ import requests
 import subprocess
 import logging
 from logging.handlers import TimedRotatingFileHandler
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 from multiprocessing import Pool
 from webdav3.client import Client
 from pathlib import Path
@@ -143,43 +143,32 @@ def normalize_directory_structure():
 
             video_files = client.list(date_path)
 
-            # Проверяем, есть ли уже правильная структура
             for video in video_files:
                 video_path = sanitize_path(f"{date_path}/{video}")
 
                 if client.is_dir(video_path):
-                    # Пропускаем, если уже директория
-                    continue
+                    continue  # Пропускаем, если уже директория
 
-                # Извлекаем номер регистратора и дату из имени файла
-                parts = video.split()
-                if len(parts) < 2:
-                    print(f"Пропущен файл {video} — неправильный формат имени")
-                    continue
+                # Проверяем, не закодирован ли путь уже
+                decoded_video_path = unquote(video_path)
 
-                reg_number = parts[0]
-                date_part = parts[1]
-
-                # Новый путь для видео (создаём папку, если её нет)
+                # Создаём нужную структуру
                 new_dir_path = sanitize_path(f"{reg_path}/{date}/videos")
                 if not client.check(new_dir_path):
                     client.mkdir(new_dir_path)
 
                 new_video_path = sanitize_path(f"{new_dir_path}/{video}")
 
-                # Проверяем, существует ли файл перед перемещением
-                if not client.check(video_path):
-                    print(f"Файл {video_path} не найден, пропускаем.")
+                if not client.check(decoded_video_path):
+                    print(f"Файл {decoded_video_path} не найден, пропускаем.")
                     continue
 
-                # Перемещаем файл в правильную папку
+                # Перемещаем файл
                 try:
-                    client.move(remote_path_from=quote(video_path),
-                                remote_path_to=quote(new_video_path))
+                    client.move(remote_path_from=decoded_video_path, remote_path_to=new_video_path)
                     print(f"Файл {video} перемещён в {new_video_path}")
                 except Exception as e:
                     print(f"Ошибка при перемещении {video}: {e}")
-
 
 def download_videos():
     """Загружает новые видеофайлы из WebDAV."""
