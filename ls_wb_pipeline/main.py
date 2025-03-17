@@ -152,8 +152,8 @@ def normalize_directory_structure():
             print(f"📄 Файлы в {date_path}: {existing_files}")
 
             for video in existing_files:
-                video_path = sanitize_path(f"{date_path}/{video}")
-
+                #video_path = sanitize_path(f"{date_path}/{video}")
+                video_path = f"{date_path}/{video}"
                 # Создаём `videos/`, если её нет
                 new_dir_path = sanitize_path(f"{date_path}/videos")
                 if not client.check(new_dir_path):
