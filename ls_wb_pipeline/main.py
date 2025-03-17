@@ -147,35 +147,24 @@ def normalize_directory_structure():
             for video in video_files:
                 video_path = sanitize_path(f"{date_path}/{video}")
 
-                # Логируем путь перед проверкой
-                print(f"Проверяем: {video_path}")
-
-                if client.is_dir(video_path):
-                    continue  # Пропускаем, если уже директория
-
-                # **Проверяем, есть ли файл через `client.list()`**
+                # Проверяем, что файл действительно есть
                 existing_files = client.list(date_path)
                 if video not in existing_files:
-                    print(f"Файл {video} отсутствует в `client.list()`, пропускаем.")
+                    print(f"❌ Файл {video} не найден в `client.list()`, пропускаем.")
                     continue
 
-                # **Используем `quote()` для всего пути**
-                safe_video_path = quote(video_path, safe="/")
-
-                # Создаём нужную структуру
+                # Нормализуем путь
                 new_dir_path = sanitize_path(f"{reg_path}/{date}/videos")
                 if not client.check(new_dir_path):
                     client.mkdir(new_dir_path)
 
                 new_video_path = sanitize_path(f"{new_dir_path}/{video}")
-                safe_new_video_path = quote(new_video_path, safe="/")
 
-                # Логируем перед `move()`
-                print(f"Перемещаем: {safe_video_path} -> {safe_new_video_path}")
+                # Логируем перед move()
+                print(f"🔄 Перемещаем: {video_path} -> {new_video_path}")
 
-                # **Перемещаем файл**
                 try:
-                    client.move(remote_path_from=safe_video_path, remote_path_to=safe_new_video_path)
+                    client.move(remote_path_from=video_path, remote_path_to=new_video_path)
                     print(f"✅ Файл {video} перемещён в {new_video_path}")
                 except Exception as e:
                     print(f"❌ Ошибка при перемещении {video}: {e}")
