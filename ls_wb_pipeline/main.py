@@ -154,15 +154,9 @@ def normalize_directory_structure():
             for video in existing_files:
                 video_path = sanitize_path(f"{date_path}/{video}")
 
-                # 🔍 Проверяем оригинальный и URL-декодированный путь
-                decoded_video_path = urllib.parse.unquote(video_path)
-
-                if video_path in existing_files:
-                    print(f"✅ Найден: {video_path}")
-                elif decoded_video_path in existing_files:
-                    print(f"✅ Найден (после декодирования): {decoded_video_path}")
-                else:
-                    print(f"❌ Файл {video_path} НЕ найден в `client.list()`, пропускаем.")
+                # ✅ Поправленное сравнение!
+                if video not in existing_files:
+                    print(f"❌ Файл `{video}` НЕ найден в `client.list()`, пропускаем.")
                     continue
 
                 # Создаём `videos/`, если её нет
