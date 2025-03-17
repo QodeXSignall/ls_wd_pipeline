@@ -128,9 +128,11 @@ def remount_webdav():
 
 import urllib.parse
 
+
 def normalize_directory_structure():
     """Приводит структуру папок к нужному формату через WebDAV."""
     registrators = client.list(BASE_REMOTE_DIR)
+    print(f"📁 Список регистраторов: {registrators}")
 
     for reg in registrators:
         reg_path = sanitize_path(f"{BASE_REMOTE_DIR}/{reg}")
@@ -138,39 +140,43 @@ def normalize_directory_structure():
             continue
 
         date_dirs = client.list(reg_path)
+        print(f"📂 Даты в {reg}: {date_dirs}")
 
         for date in date_dirs:
             date_path = sanitize_path(f"{reg_path}/{date}")
             if not client.is_dir(date_path):
                 continue
 
-            video_files = client.list(date_path)
+            # 🔥 Список файлов ДО обработки
+            existing_files = client.list(date_path)
+            print(f"📄 Файлы в {date_path}: {existing_files}")
 
-            for video in video_files:
+            for video in existing_files:
                 video_path = sanitize_path(f"{date_path}/{video}")
 
-                # Декодируем путь
-                decoded_path = urllib.parse.unquote(video_path)
+                # 🔍 Проверяем оригинальный и URL-декодированный путь
+                decoded_video_path = urllib.parse.unquote(video_path)
 
-                # Проверяем наличие файла
-                existing_files = [urllib.parse.unquote(f) for f in client.list(date_path)]
-                if decoded_path not in existing_files:
-                    print(f"❌ Файл {decoded_path} не найден в `client.list()`, пропускаем.")
+                if video_path in existing_files:
+                    print(f"✅ Найден: {video_path}")
+                elif decoded_video_path in existing_files:
+                    print(f"✅ Найден (после декодирования): {decoded_video_path}")
+                else:
+                    print(f"❌ Файл {video_path} НЕ найден в `client.list()`, пропускаем.")
                     continue
 
-                # Создаём папку `videos`, если её нет
-                new_dir_path = sanitize_path(f"{reg_path}/{date}/videos")
+                # Создаём `videos/`, если её нет
+                new_dir_path = sanitize_path(f"{date_path}/videos")
                 if not client.check(new_dir_path):
                     client.mkdir(new_dir_path)
 
                 new_video_path = sanitize_path(f"{new_dir_path}/{video}")
 
-                # Логируем перед move()
-                print(f"🔄 Перемещаем: {decoded_path} -> {new_video_path}")
+                print(f"🔄 Перемещаем: {video_path} -> {new_video_path}")
 
                 try:
                     client.move(remote_path_from=video_path, remote_path_to=new_video_path)
-                    print(f"✅ Файл {video} перемещён в {new_video_path}")
+                    print(f"✅ Файл перемещён: {new_video_path}")
                 except Exception as e:
                     print(f"❌ Ошибка при перемещении {video}: {e}")
 
