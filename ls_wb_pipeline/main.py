@@ -147,14 +147,14 @@ def normalize_directory_structure():
             if not client.is_dir(date_path):
                 continue
 
-            # 🔥 Список файлов ДО обработки
-            existing_files = client.list(date_path)
+            # 🔥 Получаем список файлов **без абсолютных путей**
+            existing_files = set(client.list(date_path))
             print(f"📄 Файлы в {date_path}: {existing_files}")
 
             for video in existing_files:
                 video_path = sanitize_path(f"{date_path}/{video}")
 
-                # ✅ Поправленное сравнение!
+                # ✅ Теперь сравниваем только имена файлов!
                 if video not in existing_files:
                     print(f"❌ Файл `{video}` НЕ найден в `client.list()`, пропускаем.")
                     continue
