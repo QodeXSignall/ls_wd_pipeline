@@ -288,7 +288,7 @@ def delete_blacklisted_files():
                 print(f"🗑 Удаляю файл: {item_path}")
                 client.clean(item_path)  # Удаляем файл
 
-    traverse_and_delete(FRAME_DIR_TEMP)
+    traverse_and_delete(REMOTE_FRAME_DIR)
 
 # Запуск функции
 
