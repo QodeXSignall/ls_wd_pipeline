@@ -59,7 +59,7 @@ DATASET_SPLIT = {"train": 0.7, "test": 0.2, "val": 0.1}
 CYCLE_INTERVAL = 3600  # Время между циклами в секундах (1 час)
 MOUNTED_PATH = "/mnt/webdav_frames"  # Локальный путь для монтирования WebDAV
 FRAMES_PER_SECOND = 1
-WEBDAV_REMOTE = "webdav:/Tracker/Видео выгрузок/104039/Тесты для wb_ls_pipeline/frames"
+WEBDAV_REMOTE = "webdav:/Tracker/annotation_frames"
 DOWNLOAD_HISTORY_FILE = "downloaded_videos.json"
 
 # Загруженные файлы
