@@ -125,6 +125,7 @@ def remount_webdav():
     except Exception as e:
         logger.error(f"Ошибка при монтировании WebDAV: {e}")
 
+
 def download_videos():
     """Загружает новые видеофайлы из WebDAV."""
     remount_webdav()
@@ -272,6 +273,8 @@ def sync_label_studio_storage():
         logger.info(f"Результат синхронизации: {response.text}")
         return False
 
+
+'''
 def delete_blacklisted_files():
     """Удаляет все файлы, которые начинаются с '018270348452'."""
     PREFIX_TO_DELETE = "018270348452"  # Префикс для удаления
@@ -289,13 +292,11 @@ def delete_blacklisted_files():
                 client.clean(item_path)  # Удаляем файл
 
     traverse_and_delete(REMOTE_FRAME_DIR)
+'''
 
-# Запуск функции
 
 def main():
     logger.info("Запущен основной цикл")
-    delete_blacklisted_files()
-    return
     while True:
         download_videos()
         videos = [os.path.join(LOCAL_VIDEO_DIR, f) for f in
