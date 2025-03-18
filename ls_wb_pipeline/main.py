@@ -272,9 +272,30 @@ def sync_label_studio_storage():
         logger.info(f"Результат синхронизации: {response.text}")
         return False
 
+def delete_blacklisted_files():
+    """Удаляет все файлы, которые начинаются с '018270348452'."""
+    PREFIX_TO_DELETE = "018270348452"  # Префикс для удаления
+
+    def traverse_and_delete(path):
+        """Рекурсивно обходит директорию и удаляет файлы с указанным префиксом."""
+        items = client.list(path)
+        for item in items:
+            item_path = sanitize_path(f"{path}/{item}")
+
+            if client.is_dir(item_path):
+                traverse_and_delete(item_path)  # Рекурсивно идём внутрь
+            elif item.startswith(PREFIX_TO_DELETE):
+                print(f"🗑 Удаляю файл: {item_path}")
+                client.clean(item_path)  # Удаляем файл
+
+    traverse_and_delete(BASE_REMOTE_DIR)
+
+# Запуск функции
 
 def main():
     logger.info("Запущен основной цикл")
+    delete_blacklisted_files()
+    return
     while True:
         download_videos()
         videos = [os.path.join(LOCAL_VIDEO_DIR, f) for f in
