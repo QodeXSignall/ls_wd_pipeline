@@ -43,6 +43,7 @@ WEBDAV_OPTIONS = {
 client = Client(WEBDAV_OPTIONS)
 
 # Параметры
+BLACKLISTED_REGISTRATORS = {"018270348452"}
 LABELSTUDIO_HOST = "http://localhost"
 LABELSTUDIO_PORT = 8081
 LABELSTUDIO_STORAGE_ID = 1
@@ -154,7 +155,7 @@ def sanitize_path(path):
 
 
 def get_all_video_files():
-    """Рекурсивно обходит всю директорию BASE_REMOTE_DIR и возвращает список всех mp4 файлов, игнорируя структуру."""
+    """Рекурсивно обходит всю директорию BASE_REMOTE_DIR и возвращает список всех mp4 файлов, игнорируя структуру, но исключая файлы с номерами из черного списка."""
     all_videos = []
 
     def traverse_directory(path):
@@ -165,6 +166,11 @@ def get_all_video_files():
             if client.is_dir(item_path):
                 traverse_directory(item_path)  # Рекурсивно идем внутрь
             elif item.endswith(".mp4"):
+                # Проверяем, содержится ли номер регистратора в названии файла
+                if any(reg in item for reg in BLACKLISTED_REGISTRATORS):
+                    print(f"❌ Пропущен файл: {item_path} (в черном списке)")
+                    continue
+
                 all_videos.append(item_path)  # Добавляем mp4-файл
 
     traverse_directory(BASE_REMOTE_DIR)
