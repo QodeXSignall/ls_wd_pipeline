@@ -192,30 +192,6 @@ def download_videos():
 def sanitize_path(path):
     return path.replace("//", "/")
 
-
-def get_all_video_files():
-    """Рекурсивно обходит всю директорию BASE_REMOTE_DIR и возвращает список всех mp4 файлов, игнорируя структуру, но исключая файлы с номерами из черного списка."""
-    all_videos = []
-
-    def traverse_directory(path):
-        """Рекурсивный обход директории."""
-        items = client.list(path)
-        for item in items:
-            item_path = sanitize_path(f"{path}/{item}")
-            if client.is_dir(item_path):
-                traverse_directory(item_path)  # Рекурсивно идем внутрь
-            elif item.endswith(".mp4"):
-                # Проверяем, содержится ли номер регистратора в названии файла
-                if any(reg in item for reg in BLACKLISTED_REGISTRATORS):
-                    print(f"❌ Пропущен файл: {item_path} (в черном списке)")
-                    continue
-
-                all_videos.append(item_path)  # Добавляем mp4-файл
-
-    traverse_directory(BASE_REMOTE_DIR)
-    return all_videos
-
-
 def count_remote_frames():
     """Подсчитывает количество кадров (jpg) в удалённой папке."""
     try:
