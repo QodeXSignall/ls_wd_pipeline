@@ -78,9 +78,19 @@ def save_download_history():
 
 
 def is_mounted():
-    """Проверяет, смонтирована ли папка WebDAV."""
-    output = subprocess.run(["mount"], capture_output=True, text=True)
-    return MOUNTED_PATH in output.stdout
+    """Проверяет, смонтирована ли папка WebDAV и работает ли соединение."""
+    # 1. Проверяем, что путь действительно смонтирован
+    if not os.path.ismount(MOUNTED_PATH):
+        return False
+
+    # 2. Пробуем получить список файлов — если endpoint мёртв, тут вылетит OSError
+    try:
+        test = os.listdir(MOUNTED_PATH)
+        return True
+    except OSError as e:
+        logger.warning(f"Путь {MOUNTED_PATH} смонтирован, но недоступен: {e}")
+        return False
+
 
 
 def mount_webdav():
@@ -110,20 +120,21 @@ def remount_webdav():
         return
 
     logger.warning("WebDAV отключен. Перемонтируем...")
-    subprocess.run(["fusermount", "-u", MOUNTED_PATH], check=False)
+
+    subprocess.run(["fusermount", "-uz", MOUNTED_PATH], check=False)
     time.sleep(2)
 
     try:
         os.makedirs(MOUNTED_PATH, exist_ok=True)
         subprocess.run(
-            ["rclone", "mount", WEBDAV_REMOTE, MOUNTED_PATH, "--daemon",
-             "--no-modtime"], check=True)
-        time.sleep(3)  # Даем время на монтирование
+            ["rclone", "mount", WEBDAV_REMOTE, MOUNTED_PATH, "--daemon", "--no-modtime"],
+            check=True
+        )
+        time.sleep(3)
         if is_mounted():
             logger.info("WebDAV успешно перемонтирован.")
         else:
-            logger.error(
-                "Ошибка: WebDAV не смонтирован после попытки перемонтирования.")
+            logger.error("Ошибка: WebDAV не смонтирован после попытки перемонтирования.")
     except Exception as e:
         logger.error(f"Ошибка при монтировании WebDAV: {e}")
 
