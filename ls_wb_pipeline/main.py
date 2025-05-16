@@ -250,6 +250,7 @@ def extract_frames(video_path):
 
         if frame_count % frame_interval == 0:
             frame_filename = f"{Path(video_path).stem}_{saved_frame_count:06d}.jpg"
+            frame_filename = frame_filename.replace(" ", "_")
             local_frame_path = os.path.join(FRAME_DIR_TEMP, frame_filename)
             remote_frame_path = os.path.join(MOUNTED_FRAME_DIR, frame_filename)
 
