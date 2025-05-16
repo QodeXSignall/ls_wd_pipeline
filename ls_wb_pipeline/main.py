@@ -1,15 +1,16 @@
-import os
-import cv2
-import json
-import time
-import requests
-import subprocess
-import logging
 from logging.handlers import TimedRotatingFileHandler
-from urllib.parse import quote, unquote
 from multiprocessing import Pool
 from webdav3.client import Client
+from itertools import islice
 from pathlib import Path
+import subprocess
+import logging
+import requests
+import json
+import time
+import os
+import cv2
+
 
 # Настройка логирования
 LOG_DIR = str(Path(__file__).parent / "logs")
@@ -126,29 +127,27 @@ def remount_webdav():
         logger.error(f"Ошибка при монтировании WebDAV: {e}")
 
 
+
+def iter_video_files(path):
+    """Генератор, лениво обходит WebDAV и yield'ит валидные mp4-файлы."""
+    items = client.list(path)
+    for item in items:
+        item_path = sanitize_path(f"{path}/{item}")
+        if client.is_dir(item_path):
+            yield from iter_video_files(item_path)
+        elif item.endswith(".mp4"):
+            if any(reg in item for reg in BLACKLISTED_REGISTRATORS):
+                logger.debug(f"Пропущен файл: {item_path} (в чёрном списке)")
+                continue
+            if item_path in downloaded_videos:
+                continue
+            yield item_path
+
+
 def get_all_video_files(max_files=10):
-    """Возвращает до `max_files` новых mp4-файлов, исключая чёрный список и уже загруженные."""
-    all_videos = []
+    """Возвращает не более `max_files` валидных видео из WebDAV."""
+    return list(islice(iter_video_files(BASE_REMOTE_DIR), max_files))
 
-    def traverse_directory(path):
-        nonlocal all_videos
-        items = client.list(path)
-        for item in items:
-            item_path = sanitize_path(f"{path}/{item}")
-            if client.is_dir(item_path):
-                traverse_directory(item_path)
-            elif item.endswith(".mp4"):
-                if any(reg in item for reg in BLACKLISTED_REGISTRATORS):
-                    logger.debug(f"Пропущен файл: {item_path} (в чёрном списке)")
-                    continue
-                if item_path in downloaded_videos:
-                    continue
-                all_videos.append(item_path)
-                if len(all_videos) >= max_files:
-                    return  # Достигли лимита — останавливаем обход
-
-    traverse_directory(BASE_REMOTE_DIR)
-    return all_videos
 
 
 def download_videos():
