@@ -129,6 +129,18 @@ def remount_webdav():
 def download_videos():
     """Загружает новые видеофайлы из WebDAV."""
     remount_webdav()
+
+    # Проверка лимита кадров
+    try:
+        items = client.list(REMOTE_FRAME_DIR)
+        frame_count = sum(1 for item in items if item.endswith(".jpg"))
+        if frame_count >= 5000:
+            logger.warning(f"Пропущена загрузка видео: уже {frame_count} кадров в хранилище.")
+            return
+    except Exception as e:
+        logger.error(f"Ошибка при проверке лимита кадров: {e}")
+        return
+
     all_videos = get_all_video_files()
     os.makedirs(LOCAL_VIDEO_DIR, exist_ok=True)
 
