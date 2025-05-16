@@ -126,6 +126,31 @@ def remount_webdav():
         logger.error(f"Ошибка при монтировании WebDAV: {e}")
 
 
+def get_all_video_files(max_files=10):
+    """Возвращает до `max_files` новых mp4-файлов, исключая чёрный список и уже загруженные."""
+    all_videos = []
+
+    def traverse_directory(path):
+        nonlocal all_videos
+        items = client.list(path)
+        for item in items:
+            item_path = sanitize_path(f"{path}/{item}")
+            if client.is_dir(item_path):
+                traverse_directory(item_path)
+            elif item.endswith(".mp4"):
+                if any(reg in item for reg in BLACKLISTED_REGISTRATORS):
+                    logger.debug(f"Пропущен файл: {item_path} (в чёрном списке)")
+                    continue
+                if item_path in downloaded_videos:
+                    continue
+                all_videos.append(item_path)
+                if len(all_videos) >= max_files:
+                    return  # Достигли лимита — останавливаем обход
+
+    traverse_directory(BASE_REMOTE_DIR)
+    return all_videos
+
+
 def download_videos():
     """Загружает новые видеофайлы из WebDAV."""
     remount_webdav()
@@ -142,6 +167,7 @@ def download_videos():
         return
 
     all_videos = get_all_video_files()
+    logger.debug("Получены пути до файлов")
     os.makedirs(LOCAL_VIDEO_DIR, exist_ok=True)
 
     for video in all_videos:
