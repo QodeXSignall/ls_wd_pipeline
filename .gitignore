@@ -28,7 +28,7 @@ label_studio.db
 media/
 
 # WebDAV mounted directory
-/mnt/webdav_frames/
+/mnt/webdav/
 
 # Video files
 video_files/

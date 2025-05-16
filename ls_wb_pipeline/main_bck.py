@@ -207,7 +207,8 @@ def sanitize_path(path):
 def count_remote_frames(webdav_client):
     """Подсчитывает количество кадров (jpg) в удалённой папке."""
     try:
-        jpg_count = sum(1 for item in os.listdir(MOUNTED_FRAME_DIR) if item.endswith(".jpg"))
+        items = webdav_client.list(REMOTE_FRAME_DIR)
+        jpg_count = sum(1 for item in items if item.endswith(".jpg"))
         return jpg_count
     except Exception as e:
         logger.error(f"Ошибка при подсчёте кадров в WebDAV: {e}")
@@ -251,7 +252,7 @@ def extract_frames(video_path):
         if frame_count % frame_interval == 0:
             frame_filename = f"{Path(video_path).stem}_{saved_frame_count:06d}.jpg"
             local_frame_path = os.path.join(FRAME_DIR_TEMP, frame_filename)
-            remote_frame_path = os.path.join(MOUNTED_FRAME_DIR, frame_filename)
+            remote_frame_path = f"{REMOTE_FRAME_DIR}/{frame_filename}"
 
             cv2.imwrite(local_frame_path, frame)
             if os.path.exists(local_frame_path):
