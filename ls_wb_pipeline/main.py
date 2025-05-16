@@ -192,10 +192,10 @@ def download_videos():
 def sanitize_path(path):
     return path.replace("//", "/")
 
-def count_remote_frames():
+def count_remote_frames(webdav_client):
     """Подсчитывает количество кадров (jpg) в удалённой папке."""
     try:
-        items = client.list(REMOTE_FRAME_DIR)
+        items = webdav_client.list(REMOTE_FRAME_DIR)
         jpg_count = sum(1 for item in items if item.endswith(".jpg"))
         return jpg_count
     except Exception as e:
@@ -207,7 +207,7 @@ def extract_frames(video_path):
     """Разбивает видео на кадры и загружает в WebDAV с повторной попыткой при ошибках."""
     local_client = Client(WEBDAV_OPTIONS)
     cap = cv2.VideoCapture(video_path)
-    existing_frames = count_remote_frames()
+    existing_frames = count_remote_frames(webdav_client=local_client)
     if existing_frames >= 5000:
         logger.warning(
             f"Превышен лимит кадров в хранилище ({existing_frames} >= 5000). Пропускаем видео {video_path}.")
