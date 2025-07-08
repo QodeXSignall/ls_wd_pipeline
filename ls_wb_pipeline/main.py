@@ -48,7 +48,7 @@ BLACKLISTED_REGISTRATORS = {"018270348452", "104039", "2024050601",
                             "118270348452"}
 LABELSTUDIO_HOST = "http://localhost"
 LABELSTUDIO_PORT = 8081
-LABELSTUDIO_STORAGE_ID = 1
+LABELSTUDIO_STORAGE_ID = 2
 BASE_REMOTE_DIR = "/Tracker/Видео выгрузок"
 LOCAL_VIDEO_DIR = str(Path(
     __file__).parent / "misc/videos_temp")  # Локальная папка для временных видео
@@ -59,7 +59,7 @@ LABELSTUDIO_API_URL = f"{LABELSTUDIO_HOST}:{LABELSTUDIO_PORT}/api/projects/1/imp
 LABELSTUDIO_TOKEN = os.environ.get("labelstudio_token")
 DATASET_SPLIT = {"train": 0.7, "test": 0.2, "val": 0.1}
 CYCLE_INTERVAL = 3600  # Время между циклами в секундах (1 час)
-MOUNTED_PATH = "/mnt/webdav"  # Локальный путь для монтирования WebDAV
+MOUNTED_PATH = "/mnt/webdav_frames"  # Локальный путь для монтирования WebDAV
 MOUNTED_FRAME_DIR = os.path.join(MOUNTED_PATH, "frames")
 FRAMES_PER_SECOND = 1
 WEBDAV_REMOTE = "webdav:/Tracker/annotation_frames"
@@ -305,7 +305,7 @@ def sync_label_studio_storage():
     :return: Результат синхронизации (True - успех, False - ошибка)
     """
     remount_webdav()
-    sync_url = f"{LABELSTUDIO_HOST}:{LABELSTUDIO_PORT}/api/storages/localfiles/{LABELSTUDIO_STORAGE_ID}/sync"
+    sync_url = f"{LABELSTUDIO_HOST}:{LABELSTUDIO_PORT}/api/storages/localfiles/{LABELSTUDIO_STORAGE_ID}/sync/"
     headers = {"Authorization": f"Token {LABELSTUDIO_TOKEN}", }
 
     response = requests.post(sync_url, headers=headers)

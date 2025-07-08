@@ -1,3 +1,4 @@
 requests
 opencv-python
 webdavclient3
+scikit-learn
