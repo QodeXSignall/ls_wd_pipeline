@@ -376,7 +376,7 @@ def sync_label_studio_storage():
     :return: Результат синхронизации (True - успех, False - ошибка)
     """
     remount_webdav()
-    sync_url = f"{LABELSTUDIO_HOST}:{LABELSTUDIO_PORT}/api/storages/localfiles/{LABELSTUDIO_STORAGE_ID}/sync/"
+    sync_url = f"{LABELSTUDIO_HOST}:{LABELSTUDIO_PORT}/api/storages/localfiles/{LABELSTUDIO_STORAGE_ID}/sync"
 
     response = requests.post(sync_url, headers=HEADERS)
 
