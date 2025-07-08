@@ -95,8 +95,8 @@ def is_mounted():
 
 
 
-def mount_webdav():
-    """Монтирует WebDAV папку с кадрами как локальную директорию."""
+def mount_webdav(from_systemd=False):
+    """Монтирует WebDAV как локальную директорию."""
     if is_mounted():
         logger.info("WebDAV уже смонтирован.")
         return
@@ -104,15 +104,19 @@ def mount_webdav():
     try:
         logger.info("Монтируем WebDAV...")
         os.makedirs(MOUNTED_PATH, exist_ok=True)
-        subprocess.run(
-            ["rclone", "mount", WEBDAV_REMOTE, MOUNTED_PATH, "--daemon",
-             "--no-modtime"], check=True)
-        time.sleep(3)  # Даем время на монтирование
-        os.makedirs(MOUNTED_FRAME_DIR)
+        args = [
+            "rclone", "mount", WEBDAV_REMOTE, MOUNTED_PATH,
+            "--no-modtime"
+        ]
+        if not from_systemd:
+            args.append("--daemon")
+
+        subprocess.run(args, check=True)
+        time.sleep(2)
         if is_mounted():
             logger.info(f"WebDAV успешно смонтирован в {MOUNTED_PATH}")
         else:
-            logger.error("Ошибка: WebDAV не смонтирован.")
+            logger.error("WebDAV не смонтирован.")
     except Exception as e:
         logger.error(f"Ошибка при монтировании WebDAV: {e}")
 
