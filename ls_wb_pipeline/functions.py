@@ -49,14 +49,16 @@ BLACKLISTED_REGISTRATORS = {"018270348452", "104039", "2024050601",
 LABELSTUDIO_HOST = "http://localhost"
 LABELSTUDIO_PORT = 8081
 LABELSTUDIO_STORAGE_ID = 2
+PROJECT_ID = 2
 BASE_REMOTE_DIR = "/Tracker/Видео выгрузок"
 LOCAL_VIDEO_DIR = str(Path(
     __file__).parent / "misc/videos_temp")  # Локальная папка для временных видео
 FRAME_DIR_TEMP = str(Path(__file__).parent / "misc/frames_temp")
 REMOTE_FRAME_DIR = "/Tracker/annotation_frames"
 ANNOTATIONS_FILE = "annotations.json"
-LABELSTUDIO_API_URL = f"{LABELSTUDIO_HOST}:{LABELSTUDIO_PORT}/api/projects/1/import"
+LABELSTUDIO_API_URL = f"{LABELSTUDIO_HOST}:{LABELSTUDIO_PORT}/api"
 LABELSTUDIO_TOKEN = os.environ.get("labelstudio_token")
+HEADERS = {"Authorization": f"Token {LABELSTUDIO_TOKEN}", }
 DATASET_SPLIT = {"train": 0.7, "test": 0.2, "val": 0.1}
 CYCLE_INTERVAL = 3600  # Время между циклами в секундах (1 час)
 MOUNTED_PATH = "/mnt/webdav_frames"  # Локальный путь для монтирования WebDAV
@@ -76,7 +78,6 @@ else:
 def save_download_history():
     with open(DOWNLOAD_HISTORY_FILE, "w") as f:
         json.dump(list(downloaded_videos), f)
-
 
 def is_mounted():
     """Проверяет, смонтирована ли папка WebDAV и работает ли соединение."""
@@ -215,6 +216,66 @@ def count_remote_frames(webdav_client):
         logger.error(f"Ошибка при подсчёте кадров в WebDAV: {e}")
         return 0
 
+def clean_cloud_files(json_path, dry_run=False):
+    import json, os
+
+    # Загрузка размеченных файлов
+    with open(json_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    marked_files = set()
+    for task in data:
+        anns = task.get("annotations")
+        if not anns or not isinstance(anns, list):
+            continue
+        results = anns[0].get("result", [])
+        if results:
+            image_path = task["data"]["image"]
+            marked_files.add(os.path.basename(image_path))
+
+    # Удаление мусора
+    deleted, skipped = 0, 0
+    for file in os.listdir(MOUNTED_PATH):
+        if not file.lower().endswith(".jpg"):
+            continue
+        if file not in marked_files:
+            file_path = os.path.join(MOUNTED_PATH, file)
+            if dry_run:
+                print(f"[DRY RUN] Будет удалено: {file}")
+            else:
+                os.remove(file_path)
+                print(f"[DEL] {file}")
+                deleted += 1
+        else:
+            skipped += 1
+
+    print(f"{'[DRY RUN] ' if dry_run else ''}Удаление завершено. Удалено: {deleted}, оставлено: {skipped}")
+
+
+def delete_ls_tasks(dry_run=False):
+    import requests
+
+    r = requests.get(f"{LABELSTUDIO_API_URL}/projects/{PROJECT_ID}/tasks", headers=HEADERS)
+    tasks = r.json()
+
+    to_delete = []
+    for task in tasks:
+        anns = task.get("annotations")
+        if not anns or not anns[0].get("result"):
+            to_delete.append(task["id"])
+
+    for task_id in to_delete:
+        if dry_run:
+            print(f"[DRY RUN] Будет удалена задача {task_id}")
+        else:
+            r = requests.delete(f"{LABELSTUDIO_API_URL}/projects/{PROJECT_ID}/tasks/{task_id}", headers=HEADERS)
+            if r.status_code == 204:
+                print(f"[LS DEL] Task {task_id} удалена")
+            else:
+                print(f"[ERR] Не удалось удалить task {task_id}")
+
+    print(f"{'[DRY RUN] ' if dry_run else ''}Удаление задач завершено. Кол-во: {len(to_delete)}")
+
 
 def extract_frames(video_path):
     """Разбивает видео на кадры и загружает в WebDAV с повторной попыткой при ошибках."""
@@ -306,9 +367,8 @@ def sync_label_studio_storage():
     """
     remount_webdav()
     sync_url = f"{LABELSTUDIO_HOST}:{LABELSTUDIO_PORT}/api/storages/localfiles/{LABELSTUDIO_STORAGE_ID}/sync/"
-    headers = {"Authorization": f"Token {LABELSTUDIO_TOKEN}", }
 
-    response = requests.post(sync_url, headers=headers)
+    response = requests.post(sync_url, headers=HEADERS)
 
     if response.status_code == 200:
         logger.info("Хранилище успешно синхронизовано")
@@ -339,28 +399,24 @@ def delete_blacklisted_files():
 '''
 
 
-def main():
-    logger.info("Запущен основной цикл")
-    while True:
-        download_videos()
-        videos = [os.path.join(LOCAL_VIDEO_DIR, f) for f in
-                  os.listdir(LOCAL_VIDEO_DIR) if f.endswith(".mp4")]
-        with Pool(processes=4) as pool:
-            results = pool.map(extract_frames, videos)
+def main_process_new_frames():
+    logger.info("Запущен основной цикл создания фреймов")
+    download_videos()
+    videos = [os.path.join(LOCAL_VIDEO_DIR, f) for f in
+              os.listdir(LOCAL_VIDEO_DIR) if f.endswith(".mp4")]
+    with Pool(processes=4) as pool:
+        results = pool.map(extract_frames, videos)
 
-        failed_videos = [video for video, success in results if not success]
-        if failed_videos:
-            logger.warning(
-                f"Не удалось обработать следующие видео: {failed_videos}")
+    failed_videos = [video for video, success in results if not success]
+    if failed_videos:
+        logger.warning(
+            f"Не удалось обработать следующие видео: {failed_videos}")
 
-        mount_webdav()
-        # import_to_labelstudio()
+    mount_webdav()
+    # import_to_labelstudio()
 
-        sync_label_studio_storage()
-        cleanup_videos()
-        logger.info("Цикл завершен. Ожидание...")
-        time.sleep(CYCLE_INTERVAL)
+    sync_label_studio_storage()
+    cleanup_videos()
+    logger.info("Цикл завершен.")
 
 
-if __name__ == "__main__":
-    main()

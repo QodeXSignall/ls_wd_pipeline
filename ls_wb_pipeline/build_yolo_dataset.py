@@ -3,11 +3,11 @@ import json
 import argparse
 from collections import Counter
 from sklearn.model_selection import train_test_split
-from ls_wb_pipeline import main
+from ls_wb_pipeline import functions
 import shutil
 
 # ==== НАСТРОЙКИ (можно менять внутри скрипта) ====
-SOURCE_IMAGE_DIR = main.MOUNTED_PATH
+SOURCE_IMAGE_DIR = functions.MOUNTED_PATH
 OUTPUT_DIR = "./dataset_yolo"
 SPLIT_RATIO = (0.8, 0.1, 0.1)  # train, val, test
 
@@ -97,6 +97,48 @@ def main(json_path):
             print(f"Классу '{cls}' не хватает примерно {int(-diff)} примеров для баланса.")
         elif diff > 10:
             print(f"Класса '{cls}' заметно больше остальных (на +{int(diff)}).")
+
+def analyze_full_dataset(dataset_path=OUTPUT_DIR):
+    labels_root = os.path.join(dataset_path, "labels")
+    classes_file = os.path.join(dataset_path, "classes.txt")
+
+    if not os.path.exists(labels_root) or not os.path.exists(classes_file):
+        print("❌ Не найден labels/ или classes.txt — датасет ещё не создан?")
+        return
+
+    # Загрузка названий классов
+    with open(classes_file, "r", encoding="utf-8") as f:
+        classes = [line.strip() for line in f if line.strip()]
+
+    counter = Counter()
+    for split in ("train", "val", "test"):
+        label_dir = os.path.join(labels_root, split)
+        if not os.path.exists(label_dir):
+            continue
+        for fname in os.listdir(label_dir):
+            if fname.endswith(".txt"):
+                fpath = os.path.join(label_dir, fname)
+                with open(fpath, "r", encoding="utf-8") as f:
+                    line = f.readline().strip()
+                    if line.isdigit():
+                        class_id = int(line)
+                        counter[class_id] += 1
+
+    total = sum(counter.values())
+    print("\n📦 Общая картина по всем размеченным классам:")
+    avg = total / len(classes)
+
+    for class_id, name in enumerate(classes):
+        count = counter[class_id]
+        percent = (count / total) * 100 if total else 0
+        print(f"{class_id}: {name:25} — {count:3} шт. ({percent:.1f}%)", end="")
+        if count < avg - 10:
+            print("   ⚠️ Мало примеров")
+        elif count > avg + 10:
+            print("   ℹ️ Превышает среднее")
+        else:
+            print("")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Сборка YOLO датасета из Label Studio JSON")
