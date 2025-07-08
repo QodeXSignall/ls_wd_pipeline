@@ -81,7 +81,7 @@ def main(json_path):
 
     # Распределение классов
     summary = Counter(e["class"] for e in entries)
-    print("\nДатасет собран:")
+    print(f"\nДатасет собран. {OUTPUT_DIR}")
     total = sum(summary.values())
     print("\nРаспределение классов:")
     for cls in class_list:
@@ -97,8 +97,6 @@ def main(json_path):
             print(f"Классу '{cls}' не хватает примерно {int(-diff)} примеров для баланса.")
         elif diff > 10:
             print(f"Класса '{cls}' заметно больше остальных (на +{int(diff)}).")
-    for cls in class_list:
-        print(f"{cls:25} — {summary[cls]}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Сборка YOLO датасета из Label Studio JSON")
