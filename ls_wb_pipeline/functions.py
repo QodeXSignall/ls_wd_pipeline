@@ -165,7 +165,7 @@ def get_all_video_files(max_files=10):
 
 
 
-def download_videos():
+def download_videos(max_frames=1000):
     """Загружает новые видеофайлы из WebDAV."""
     remount_webdav()
 
@@ -173,7 +173,7 @@ def download_videos():
     try:
         items = client.list(REMOTE_FRAME_DIR)
         frame_count = sum(1 for item in items if item.endswith(".jpg"))
-        if frame_count >= 5000:
+        if frame_count >= max_frames:
             logger.warning(f"Пропущена загрузка видео: уже {frame_count} кадров в хранилище.")
             return
     except Exception as e:
@@ -224,6 +224,7 @@ def clean_cloud_files(json_path, dry_run=False):
         data = json.load(f)
 
     marked_files = set()
+
     for task in data:
         anns = task.get("annotations")
         if not anns or not isinstance(anns, list):
@@ -234,6 +235,11 @@ def clean_cloud_files(json_path, dry_run=False):
             marked_files.add(os.path.basename(image_path))
 
     # Удаление мусора
+    marked_files = set()
+    print(f"[DEBUG] Всего размеченных файлов: {len(marked_files)}")
+    print(f"[DEBUG] Примеры размеченных: {list(marked_files)[:5]}")
+    print(f"[DEBUG] Примеры файлов в директории:")
+    print(os.listdir(MOUNTED_PATH)[:5])
     deleted, skipped = 0, 0
     for file in os.listdir(MOUNTED_PATH):
         if not file.lower().endswith(".jpg"):
@@ -399,9 +405,9 @@ def delete_blacklisted_files():
 '''
 
 
-def main_process_new_frames():
+def main_process_new_frames(max_frames=3000):
     logger.info("Запущен основной цикл создания фреймов")
-    download_videos()
+    download_videos(max_frames=max_frames)
     videos = [os.path.join(LOCAL_VIDEO_DIR, f) for f in
               os.listdir(LOCAL_VIDEO_DIR) if f.endswith(".mp4")]
     with Pool(processes=4) as pool:
@@ -413,7 +419,6 @@ def main_process_new_frames():
             f"Не удалось обработать следующие видео: {failed_videos}")
 
     mount_webdav()
-    # import_to_labelstudio()
 
     sync_label_studio_storage()
     cleanup_videos()
