@@ -7,7 +7,7 @@ from ls_wb_pipeline import main
 import shutil
 
 # ==== НАСТРОЙКИ (можно менять внутри скрипта) ====
-main.MOUNTED_PATH = "./frames"  # где лежат все кадры
+SOURCE_IMAGE_DIR = main.MOUNTED_PATH
 OUTPUT_DIR = "./dataset_yolo"
 SPLIT_RATIO = (0.8, 0.1, 0.1)  # train, val, test
 
