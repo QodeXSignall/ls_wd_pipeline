@@ -263,10 +263,16 @@ def clean_cloud_files(json_path, dry_run=False):
 
 
 def delete_ls_tasks(dry_run=False):
-    import requests
+    r = requests.get(
+        f"{LABELSTUDIO_API_URL}/tasks?project={PROJECT_ID}",
+        headers=HEADERS
+    )
 
-    r = requests.get(f"{LABELSTUDIO_API_URL}/projects/{PROJECT_ID}/tasks", headers=HEADERS)
-    tasks = r.json()
+    if r.status_code != 200:
+        print(f"[ERROR] Label Studio ответил: {r.status_code} — {r.text}")
+        return
+
+    tasks = r.json().get("tasks", []) if isinstance(r.json(), dict) else r.json()
 
     to_delete = []
     for task in tasks:
@@ -278,11 +284,11 @@ def delete_ls_tasks(dry_run=False):
         if dry_run:
             print(f"[DRY RUN] Будет удалена задача {task_id}")
         else:
-            r = requests.delete(f"{LABELSTUDIO_API_URL}/projects/{PROJECT_ID}/tasks/{task_id}", headers=HEADERS)
+            r = requests.delete(f"{LABELSTUDIO_API_URL}/tasks/{task_id}", headers=HEADERS)
             if r.status_code == 204:
                 print(f"[LS DEL] Task {task_id} удалена")
             else:
-                print(f"[ERR] Не удалось удалить task {task_id}")
+                print(f"[ERR] Не удалось удалить task {task_id} — {r.status_code}: {r.text}")
 
     print(f"{'[DRY RUN] ' if dry_run else ''}Удаление задач завершено. Кол-во: {len(to_delete)}")
 
