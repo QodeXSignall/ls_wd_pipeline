@@ -74,9 +74,20 @@ def main(json_path):
             if os.path.exists(image_src):
                 shutil.copy(image_src, image_dst)
 
-    # Сохраняем classes.txt
-    with open(os.path.join(OUTPUT_DIR, "classes.txt"), "w") as f:
-        for name in class_list:
+    # Загрузка уже существующих классов (если есть)
+    existing_classes = []
+    classes_path = os.path.join(OUTPUT_DIR, "classes.txt")
+
+    if os.path.exists(classes_path):
+        with open(classes_path, "r", encoding="utf-8") as f:
+            existing_classes = [line.strip() for line in f if line.strip()]
+
+    # Объединяем старые и новые классы, убираем дубли
+    all_classes = list(dict.fromkeys(existing_classes + class_list))  # сохраняем порядок
+
+    # Сохраняем объединённый список
+    with open(classes_path, "w", encoding="utf-8") as f:
+        for name in all_classes:
             f.write(f"{name}\n")
 
     # Распределение классов
