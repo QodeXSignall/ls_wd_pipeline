@@ -177,7 +177,7 @@ def download_videos(max_frames=1000):
     try:
         items = client.list(REMOTE_FRAME_DIR)
         frame_count = sum(1 for item in items if item.endswith(".jpg"))
-        if frame_count >= max_frames:
+        if int(frame_count) >= int(max_frames):
             logger.warning(f"Пропущена загрузка видео: уже {frame_count} кадров в хранилище.")
             return
     except Exception as e:
