@@ -282,7 +282,7 @@ def delete_ls_tasks(dry_run=False):
     offset = 0
     all_tasks = []
 
-    logger.info("[INFO] Загружаем все задачи с пагинацией...")
+    logger.info("[LS] Загружаем все задачи с пагинацией...")
     while True:
         r = requests.get(
             f"{LABELSTUDIO_API_URL}/tasks?project={PROJECT_ID}&limit={limit}&offset={offset}",
@@ -290,12 +290,11 @@ def delete_ls_tasks(dry_run=False):
         )
 
         if r.status_code != 200:
-            print(f"[ERROR] Label Studio ответил: {r.status_code} — {r.text}")
+            logger.error(f"[LS] Ошибка {r.status_code}: {r.text}")
             return
 
-        page_tasks = r.json()
-        if isinstance(page_tasks, dict):
-            page_tasks = page_tasks.get("tasks", page_tasks.get("results", []))  # зависит от версии API
+        data = r.json()
+        page_tasks = data.get("results", [])
 
         if not page_tasks:
             break
@@ -303,7 +302,10 @@ def delete_ls_tasks(dry_run=False):
         all_tasks.extend(page_tasks)
         offset += limit
 
-    logger.info(f"[INFO] Всего задач загружено: {len(all_tasks)}")
+        if offset >= data.get("count", 0):
+            break
+
+    logger.info(f"[LS] Всего задач загружено: {len(all_tasks)}")
 
     # Поиск задач без аннотаций
     to_delete = []
@@ -320,7 +322,7 @@ def delete_ls_tasks(dry_run=False):
             if r.status_code == 204:
                 logger.info(f"[LS DEL] Task {task_id} удалена")
             else:
-                logger.warning(f"[ERR] Не удалось удалить task {task_id} — {r.status_code}: {r.text}")
+                logger.error(f"[ERR] Не удалось удалить task {task_id} — {r.status_code}: {r.text}")
 
     logger.info(f"{'[DRY RUN] ' if dry_run else ''}Удаление задач завершено. Кол-во: {len(to_delete)}")
 
