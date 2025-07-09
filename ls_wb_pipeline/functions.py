@@ -263,7 +263,6 @@ def clean_cloud_files(json_path, dry_run=False):
 
     # Удаление мусора
     logger.debug(f"Всего размеченных файлов: {len(marked_files)}")
-    logger.debug(f"[DEBUG] Примеры размеченных: {list(marked_files)[:5]}")
     deleted, skipped = 0, 0
     for file in os.listdir(MOUNTED_PATH):
         if not file.lower().endswith(".jpg"):
@@ -271,10 +270,10 @@ def clean_cloud_files(json_path, dry_run=False):
         if file not in marked_files:
             file_path = os.path.join(MOUNTED_PATH, file)
             if dry_run:
-                print(f"[DRY RUN] Будет удалено: {file}")
+                logger.debug(f"[DRY RUN] Будет удалено: {file}")
             else:
                 os.remove(file_path)
-                print(f"[DEL] {file}")
+                #logger.debug(f"[DEL] {file}")
                 deleted += 1
         else:
             skipped += 1
