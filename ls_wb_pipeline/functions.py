@@ -168,58 +168,45 @@ def get_all_video_files(max_files=3):
     return list(islice(iter_video_files(BASE_REMOTE_DIR), max_files))
 
 
-def download_videos(max_frames=1000, max_files=1):
+def download_videos(max_frames=1000):
     """Загружает видео из WebDAV по одному, пока не достигнет max_frames кадров."""
     remount_webdav()
-
     os.makedirs(LOCAL_VIDEO_DIR, exist_ok=True)
 
-    try:
-        items = client.list(REMOTE_FRAME_DIR)
-        frame_count = sum(1 for item in items if item.endswith(".jpg"))
-    except Exception as e:
-        logger.error(f"Ошибка при проверке лимита кадров: {e}")
-        return
+    all_videos = iter_video_files(BASE_REMOTE_DIR)
 
-    if frame_count >= max_frames:
-        logger.warning(f"Пропущена загрузка видео: уже {frame_count} кадров.")
-        return
+    for video in all_videos:
+        if video in downloaded_videos:
+            logger.debug(f"Пропущено {video}, уже скачано.")
+            continue
 
-    videos = get_all_video_files(max_files=max_files)
-    logger.debug(f"Получены {len(videos)} видеофайлов")
-    while True:
-        for video in videos:
-            if frame_count >= max_frames:
-                logger.info(f"Достигнут лимит кадров ({frame_count}/{max_frames}). Остановка загрузки.")
-                break
-            else:
-                logger.info(f"В хранилище {frame_count}/{max_frames} кадров. Разрешается обработать еще")
-            if video in downloaded_videos:
-                logger.debug(f"Пропущено {video}, уже скачано.")
-                continue
+        # Считаем количество кадров перед каждой загрузкой
+        try:
+            items = client.list(REMOTE_FRAME_DIR)
+            frame_count = sum(1 for item in items if item.endswith(".jpg"))
+        except Exception as e:
+            logger.error(f"Ошибка при проверке лимита кадров: {e}")
+            return
 
-            local_path = os.path.join(LOCAL_VIDEO_DIR, os.path.basename(video))
-            logger.info(f"Скачивание {video}")
-            try:
-                temp_path = local_path + ".part"
-                client.download_sync(remote_path=video, local_path=temp_path)
-                os.rename(temp_path, local_path)
-                downloaded_videos.add(video)
-                logger.info(f"Скачано {video} в {local_path}")
+        if frame_count >= max_frames:
+            logger.info(f"Достигнут лимит кадров ({frame_count}/{max_frames}). Остановка.")
+            break
 
-                # Обновляем количество кадров после каждого видео
-                try:
-                    items = client.list(REMOTE_FRAME_DIR)
-                    frame_count = sum(1 for item in items if item.endswith(".jpg"))
-                except Exception as e:
-                    logger.warning(f"Ошибка при обновлении счётчика кадров: {e}")
-                    break
-
-            except Exception as e:
-                logger.error(f"Ошибка при скачивании {video}: {e}")
+        local_path = os.path.join(LOCAL_VIDEO_DIR, os.path.basename(video))
+        logger.info(f"Скачивание {video}")
+        try:
+            temp_path = local_path + ".part"
+            client.download_sync(remote_path=video, local_path=temp_path)
+            os.rename(temp_path, local_path)
+            downloaded_videos.add(video)
+            logger.info(f"Скачано {video} в {local_path}")
+        except Exception as e:
+            logger.error(f"Ошибка при скачивании {video}: {e}")
+            continue
 
     save_download_history()
     logger.info("Загрузка завершена")
+
 
 
 def sanitize_path(path):
