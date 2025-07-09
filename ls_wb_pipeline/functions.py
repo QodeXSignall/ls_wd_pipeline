@@ -281,30 +281,47 @@ def delete_ls_tasks(dry_run=False):
     limit = 100
     offset = 0
     all_tasks = []
+    seen_ids = set()
 
     logger.info("[LS] Загружаем все задачи с пагинацией...")
+
     while True:
-        r = requests.get(
-            f"{LABELSTUDIO_API_URL}/tasks?project={PROJECT_ID}&limit={limit}&offset={offset}",
-            headers=HEADERS
-        )
+        url = f"{LABELSTUDIO_API_URL}/tasks?project={PROJECT_ID}&limit={limit}&offset={offset}&ordering=id"
+        logger.debug(f"[DEBUG] URL: {url}")
+        r = requests.get(url, headers=HEADERS)
 
         if r.status_code != 200:
             logger.error(f"[LS] Ошибка {r.status_code}: {r.text}")
             return
 
         data = r.json()
+        count = data.get("count")
+        total = data.get("total")
         page_tasks = data.get("tasks", [])
+
+        logger.debug(f"[DEBUG] offset={offset}, limit={limit}, получено задач: {len(page_tasks)}")
+        logger.debug(f"[DEBUG] count={count}, total={total}")
 
         if not page_tasks:
             logger.info("[LS] Получена пустая страница, завершаем цикл.")
             break
 
-        all_tasks.extend(page_tasks)
-        logger.info(f"[LS] Загружено задач: {len(all_tasks)}")
+        task_ids = [t['id'] for t in page_tasks]
+        logger.debug(f"[DEBUG] ID на странице: {task_ids}")
+
+        repeats = [tid for tid in task_ids if tid in seen_ids]
+        if repeats:
+            logger.warning(f"[LS] Обнаружены повторяющиеся ID: {repeats}")
+            break  # 💥 Останавливаемся при повторе
+
+        for task in page_tasks:
+            seen_ids.add(task["id"])
+            all_tasks.append(task)
+
         offset += limit
 
     logger.info(f"[LS] Всего задач загружено: {len(all_tasks)}")
+    logger.info(f"[LS] Уникальных задач: {len(set(t['id'] for t in all_tasks))}")
 
     # Поиск задач без аннотаций
     to_delete = []
@@ -312,6 +329,8 @@ def delete_ls_tasks(dry_run=False):
         anns = task.get("annotations")
         if not anns or not anns[0].get("result"):
             to_delete.append(task["id"])
+
+    logger.info(f"[LS] Найдено {len(to_delete)} задач без аннотаций")
 
     for task_id in to_delete:
         if dry_run:
@@ -323,7 +342,8 @@ def delete_ls_tasks(dry_run=False):
             else:
                 logger.error(f"[ERR] Не удалось удалить task {task_id} — {r.status_code}: {r.text}")
 
-    logger.info(f"{'[DRY RUN] ' if dry_run else ''}Удаление задач завершено. Кол-во: {len(to_delete)}")
+    logger.info(f"{'[DRY RUN] ' if dry_run else ''}Удаление завершено. Удалено: {len(to_delete)} задач")
+
 
 
 
