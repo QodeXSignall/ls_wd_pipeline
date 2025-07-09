@@ -262,7 +262,6 @@ def clean_cloud_files(json_path, dry_run=False):
             continue
 
     # Удаление мусора
-    marked_files = set()
     logger.debug(f"Всего размеченных файлов: {len(marked_files)}")
     logger.debug(f"[DEBUG] Примеры размеченных: {list(marked_files)[:5]}")
     deleted, skipped = 0, 0
