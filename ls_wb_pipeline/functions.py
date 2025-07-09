@@ -284,70 +284,41 @@ def clean_cloud_files(json_path, dry_run=False):
     logger.info(f"{'[DRY RUN] ' if dry_run else ''}Удаление завершено. Удалено: {deleted}, оставлено: {skipped}")
 
 
-def delete_ls_tasks(dry_run=False):
-    page = 1
-    page_size = 100
-    all_tasks = []
-    seen_ids = set()
+def delete_ls_tasks(json_path, dry_run=False):
+    # Загрузка задач из JSON
+    try:
+        with open(json_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception as e:
+        logger.error(f"[LS] Ошибка при чтении JSON: {e}")
+        return
 
-    logger.info("[LS] Загружаем все задачи с пагинацией (по страницам)...")
-
-    while True:
-        url = f"{LABELSTUDIO_API_URL}/tasks?project={PROJECT_ID}&page={page}&page_size={page_size}"
-        logger.debug(f"[DEBUG] URL: {url}")
-        r = requests.get(url, headers=HEADERS)
-
-        if r.status_code != 200:
-            logger.error(f"[LS] Ошибка {r.status_code}: {r.text}")
-            return
-
-        data = r.json()
-        page_tasks = data.get("tasks", [])
-        total = data.get("total")
-
-        logger.debug(f"[DEBUG] page={page}, получено задач: {len(page_tasks)}, total={total}")
-
-        if not page_tasks:
-            logger.info("[LS] Получена пустая страница, завершаем.")
-            break
-
-        task_ids = [t['id'] for t in page_tasks]
-        repeats = [tid for tid in task_ids if tid in seen_ids]
-        if repeats:
-            logger.warning(f"[LS] Повтор задач: {repeats[:5]} ... ({len(repeats)} всего), остановка.")
-            break
-
-        for task in page_tasks:
-            seen_ids.add(task["id"])
-            all_tasks.append(task)
-
-        if len(all_tasks) >= total:
-            logger.info("[LS] Все задачи получены.")
-            break
-
-        page += 1
-
-    logger.info(f"[LS] Уникальных задач: {len(all_tasks)}")
-
+    # Выделим ID задач без аннотаций
     to_delete = []
-    for task in all_tasks:
-        anns = task.get("annotations")
-        if not anns or not anns[0].get("result"):
+    for task in data:
+        anns = task.get("annotations", [])
+        if not anns:
+            to_delete.append(task["id"])
+            continue
+        first = anns[0]
+        if not first.get("result"):
             to_delete.append(task["id"])
 
-    logger.info(f"[LS] К удалению отобрано: {len(to_delete)} задач")
+    logger.info(f"[LS] В файле найдено {len(data)} задач, к удалению отобрано: {len(to_delete)}")
 
     for task_id in to_delete:
         if dry_run:
             logger.info(f"[DRY RUN] Будет удалена задача {task_id}")
         else:
-            r = requests.delete(f"{LABELSTUDIO_API_URL}/tasks/{task_id}", headers=HEADERS)
+            url = f"{LABELSTUDIO_API_URL}/tasks/{task_id}"
+            r = requests.delete(url, headers=HEADERS)
             if r.status_code == 204:
                 logger.info(f"[LS DEL] Удалена задача {task_id}")
             else:
                 logger.error(f"[ERR] Не удалось удалить задачу {task_id} — {r.status_code}: {r.text}")
 
     logger.info(f"{'[DRY RUN] ' if dry_run else ''}Удаление завершено. Всего удалено: {len(to_delete)}")
+
 
 
 

@@ -5,7 +5,7 @@ import argparse
 def build_dataset_and_cleanup(json_path, dry_run=True, max_frames=300):
     build_dataset.main(json_path)
     functions.clean_cloud_files(json_path, dry_run=dry_run)
-    functions.delete_ls_tasks(dry_run=dry_run)
+    functions.delete_ls_tasks(json_path, dry_run=dry_run)
     print(f"Завершено: датасет собран, мусор удалён (dry_run={dry_run})")
     build_dataset.analyze_full_dataset()
     functions.main_process_new_frames(max_frames=max_frames)
