@@ -248,10 +248,17 @@ def clean_cloud_files(json_path, dry_run=False):
         anns = task.get("annotations")
         if not anns or not isinstance(anns, list):
             continue
-        results = anns[0].get("result", [])
-        if results:
-            image_path = task["data"]["image"]
-            marked_files.add(os.path.basename(image_path))
+        first_ann = anns[0]
+        results = first_ann.get("result", [])
+        if not results:
+            continue
+        try:
+            class_name = results[0]["value"]["choices"][0]
+            image_url = task["data"]["image"]
+            image_name = os.path.basename(image_url)
+            marked_files.add(image_name)
+        except Exception:
+            continue
 
     # Удаление мусора
     marked_files = set()
@@ -491,13 +498,15 @@ def process_video_loop(max_frames=3000):
             break
 
         if frame_count >= max_frames:
-            logger.info(f"\n⛔ Достигнут лимит кадров ({frame_count}/{max_frames}). Остановка загрузки.")
+            logger.info(f"\nДостигнут лимит кадров ({frame_count}/{max_frames}). Остановка загрузки.")
             break
+        else:
+            logger.info(f"\nВ данный момент в хранилище ({frame_count}/{max_frames}). Продолжаем обработку.")
 
         try:
             video = next(video_generator)
         except StopIteration:
-            logger.info("✅ Все видео обработаны")
+            logger.info("Все видео обработаны")
             break
 
         if video in downloaded_videos:
@@ -505,22 +514,22 @@ def process_video_loop(max_frames=3000):
             continue
 
         local_path = os.path.join(LOCAL_VIDEO_DIR, os.path.basename(video))
-        logger.info(f"⬇️ Скачивание {video}")
+        logger.info(f"Скачивание {video}")
         try:
             temp_path = local_path + ".part"
             client.download_sync(remote_path=video, local_path=temp_path)
             os.rename(temp_path, local_path)
             downloaded_videos.add(video)
-            logger.info(f"✅ Скачано {video} в {local_path}")
+            logger.info(f"Скачано {video} в {local_path}")
         except Exception as e:
             logger.error(f"Ошибка при скачивании {video}: {e}")
             continue
 
         # Нарезаем кадры сразу после скачивания
-        logger.info(f"✂️ Нарезка кадров из {local_path}")
+        logger.info(f"Нарезка кадров из {local_path}")
         video_path, success = extract_frames(local_path)
         if not success:
-            logger.warning(f"⚠️ Не удалось обработать видео: {video_path}")
+            logger.warning(f"Не удалось обработать видео: {video_path}")
 
         save_download_history()
 
