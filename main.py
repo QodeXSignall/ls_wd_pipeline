@@ -13,7 +13,7 @@ def build_dataset_and_cleanup(json_path, dry_run=True, max_frames=300):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Сборка YOLO датасета из Label Studio JSON")
     parser.add_argument("--json", required=True, help="Путь до экспортированного JSON-файла из Label Studio")
-    parser.add_argument("--max_frames", default=300, help="Максимальное количество фреймов, которое нужно подготовить для разметки")
+    parser.add_argument("--max_frames", type=int, default=300, help="Максимальное количество фреймов, которое нужно подготовить для разметки")
     parser.add_argument("--dry-run", action="store_true", help="Запуск без удаления — только просмотр действий")
     args = parser.parse_args()
     build_dataset_and_cleanup(args.json, args.dry_run, args.max_frames)
