@@ -282,7 +282,7 @@ def delete_ls_tasks(dry_run=False):
     offset = 0
     all_tasks = []
 
-    print("[INFO] Загружаем все задачи с пагинацией...")
+    logger.info("[INFO] Загружаем все задачи с пагинацией...")
     while True:
         r = requests.get(
             f"{LABELSTUDIO_API_URL}/tasks?project={PROJECT_ID}&limit={limit}&offset={offset}",
@@ -303,7 +303,7 @@ def delete_ls_tasks(dry_run=False):
         all_tasks.extend(page_tasks)
         offset += limit
 
-    print(f"[INFO] Всего задач загружено: {len(all_tasks)}")
+    logger.info(f"[INFO] Всего задач загружено: {len(all_tasks)}")
 
     # Поиск задач без аннотаций
     to_delete = []
@@ -314,15 +314,15 @@ def delete_ls_tasks(dry_run=False):
 
     for task_id in to_delete:
         if dry_run:
-            print(f"[DRY RUN] Будет удалена задача {task_id}")
+            logger.info(f"[DRY RUN] Будет удалена задача {task_id}")
         else:
             r = requests.delete(f"{LABELSTUDIO_API_URL}/tasks/{task_id}", headers=HEADERS)
             if r.status_code == 204:
-                print(f"[LS DEL] Task {task_id} удалена")
+                logger.info(f"[LS DEL] Task {task_id} удалена")
             else:
-                print(f"[ERR] Не удалось удалить task {task_id} — {r.status_code}: {r.text}")
+                logger.warning(f"[ERR] Не удалось удалить task {task_id} — {r.status_code}: {r.text}")
 
-    print(f"{'[DRY RUN] ' if dry_run else ''}Удаление задач завершено. Кол-во: {len(to_delete)}")
+    logger.info(f"{'[DRY RUN] ' if dry_run else ''}Удаление задач завершено. Кол-во: {len(to_delete)}")
 
 
 
