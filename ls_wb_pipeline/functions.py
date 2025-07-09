@@ -192,7 +192,8 @@ def download_videos(max_frames=1000, max_files=1):
         if frame_count >= max_frames:
             logger.info(f"Достигнут лимит кадров ({frame_count}/{max_frames}). Остановка загрузки.")
             break
-
+        else:
+            logger.error(f"В хранилище {frame_count}/{max_frames} кадров. Разрешается обработать еще")
         if video in downloaded_videos:
             logger.debug(f"Пропущено {video}, уже скачано.")
             continue
@@ -277,19 +278,36 @@ def clean_cloud_files(json_path, dry_run=False):
 
 
 def delete_ls_tasks(dry_run=False):
-    r = requests.get(
-        f"{LABELSTUDIO_API_URL}/tasks?project={PROJECT_ID}",
-        headers=HEADERS
-    )
+    limit = 100
+    offset = 0
+    all_tasks = []
 
-    if r.status_code != 200:
-        print(f"[ERROR] Label Studio ответил: {r.status_code} — {r.text}")
-        return
+    print("[INFO] Загружаем все задачи с пагинацией...")
+    while True:
+        r = requests.get(
+            f"{LABELSTUDIO_API_URL}/tasks?project={PROJECT_ID}&limit={limit}&offset={offset}",
+            headers=HEADERS
+        )
 
-    tasks = r.json().get("tasks", []) if isinstance(r.json(), dict) else r.json()
+        if r.status_code != 200:
+            print(f"[ERROR] Label Studio ответил: {r.status_code} — {r.text}")
+            return
 
+        page_tasks = r.json()
+        if isinstance(page_tasks, dict):
+            page_tasks = page_tasks.get("tasks", page_tasks.get("results", []))  # зависит от версии API
+
+        if not page_tasks:
+            break
+
+        all_tasks.extend(page_tasks)
+        offset += limit
+
+    print(f"[INFO] Всего задач загружено: {len(all_tasks)}")
+
+    # Поиск задач без аннотаций
     to_delete = []
-    for task in tasks:
+    for task in all_tasks:
         anns = task.get("annotations")
         if not anns or not anns[0].get("result"):
             to_delete.append(task["id"])
@@ -305,6 +323,7 @@ def delete_ls_tasks(dry_run=False):
                 print(f"[ERR] Не удалось удалить task {task_id} — {r.status_code}: {r.text}")
 
     print(f"{'[DRY RUN] ' if dry_run else ''}Удаление задач завершено. Кол-во: {len(to_delete)}")
+
 
 
 def extract_frames(video_path):
