@@ -467,7 +467,7 @@ def delete_blacklisted_files():
 '''
 
 
-def main_process_new_frames(max_frames=200):
+def main_process_new_frames(max_frames=3000):
     logger.info("\n\U0001f504 Запущен основной цикл создания фреймов")
     process_video_loop(max_frames=max_frames)
     mount_webdav()
@@ -479,10 +479,9 @@ def process_video_loop(max_frames=3000):
     remount_webdav()
     os.makedirs(LOCAL_VIDEO_DIR, exist_ok=True)
 
-    videos = get_all_video_files(max_files=9999)  # получаем все возможные, но обрабатываем по одному
-    logger.debug(f"Получены {len(videos)} видеофайлов")
+    video_generator = iter_video_files(BASE_REMOTE_DIR)
 
-    for video in videos:
+    while True:
         # Проверяем количество кадров перед началом обработки видео
         try:
             items = client.list(REMOTE_FRAME_DIR)
@@ -493,6 +492,12 @@ def process_video_loop(max_frames=3000):
 
         if frame_count >= max_frames:
             logger.info(f"\n⛔ Достигнут лимит кадров ({frame_count}/{max_frames}). Остановка загрузки.")
+            break
+
+        try:
+            video = next(video_generator)
+        except StopIteration:
+            logger.info("✅ Все видео обработаны")
             break
 
         if video in downloaded_videos:
