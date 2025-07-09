@@ -294,16 +294,15 @@ def delete_ls_tasks(dry_run=False):
             return
 
         data = r.json()
-        page_tasks = data.get("results", [])
+        page_tasks = data.get("tasks", [])
 
         if not page_tasks:
+            logger.info("[LS] Получена пустая страница, завершаем цикл.")
             break
 
         all_tasks.extend(page_tasks)
+        logger.info(f"[LS] Загружено задач: {len(all_tasks)}")
         offset += limit
-
-        if offset >= data.get("count", 0):
-            break
 
     logger.info(f"[LS] Всего задач загружено: {len(all_tasks)}")
 
