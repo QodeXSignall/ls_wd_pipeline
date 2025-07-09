@@ -257,15 +257,14 @@ def clean_cloud_files(json_path, dry_run=False):
             image_url = task["data"]["image"]
             image_name = os.path.basename(image_url)
             marked_files.add(image_name)
-        except Exception:
+        except Exception as e:
+            print(e)
             continue
 
     # Удаление мусора
     marked_files = set()
     logger.debug(f"Всего размеченных файлов: {len(marked_files)}")
     logger.debug(f"[DEBUG] Примеры размеченных: {list(marked_files)[:5]}")
-    logger.debug(f"[DEBUG] Примеры файлов в директории:")
-    logger.debug(os.listdir(MOUNTED_PATH)[:5])
     deleted, skipped = 0, 0
     for file in os.listdir(MOUNTED_PATH):
         if not file.lower().endswith(".jpg"):
