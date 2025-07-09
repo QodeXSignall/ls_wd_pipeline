@@ -108,7 +108,6 @@ def main(json_path):
             print(f"Классу '{cls}' не хватает примерно {int(-diff)} примеров для баланса.")
         elif diff > 10:
             print(f"Класса '{cls}' заметно больше остальных (на +{int(diff)}).")
-    analyze_full_dataset()
 
 def analyze_full_dataset(dataset_path=OUTPUT_DIR):
     labels_root = os.path.join(dataset_path, "labels")
