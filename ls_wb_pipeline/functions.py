@@ -187,36 +187,36 @@ def download_videos(max_frames=1000, max_files=1):
 
     videos = get_all_video_files(max_files=max_files)
     logger.debug(f"Получены {len(videos)} видеофайлов")
-
-    for video in videos:
-        if frame_count >= max_frames:
-            logger.info(f"Достигнут лимит кадров ({frame_count}/{max_frames}). Остановка загрузки.")
-            break
-        else:
-            logger.error(f"В хранилище {frame_count}/{max_frames} кадров. Разрешается обработать еще")
-        if video in downloaded_videos:
-            logger.debug(f"Пропущено {video}, уже скачано.")
-            continue
-
-        local_path = os.path.join(LOCAL_VIDEO_DIR, os.path.basename(video))
-        logger.info(f"Скачивание {video}")
-        try:
-            temp_path = local_path + ".part"
-            client.download_sync(remote_path=video, local_path=temp_path)
-            os.rename(temp_path, local_path)
-            downloaded_videos.add(video)
-            logger.info(f"Скачано {video} в {local_path}")
-
-            # Обновляем количество кадров после каждого видео
-            try:
-                items = client.list(REMOTE_FRAME_DIR)
-                frame_count = sum(1 for item in items if item.endswith(".jpg"))
-            except Exception as e:
-                logger.warning(f"Ошибка при обновлении счётчика кадров: {e}")
+    while True:
+        for video in videos:
+            if frame_count >= max_frames:
+                logger.info(f"Достигнут лимит кадров ({frame_count}/{max_frames}). Остановка загрузки.")
                 break
+            else:
+                logger.info(f"В хранилище {frame_count}/{max_frames} кадров. Разрешается обработать еще")
+            if video in downloaded_videos:
+                logger.debug(f"Пропущено {video}, уже скачано.")
+                continue
 
-        except Exception as e:
-            logger.error(f"Ошибка при скачивании {video}: {e}")
+            local_path = os.path.join(LOCAL_VIDEO_DIR, os.path.basename(video))
+            logger.info(f"Скачивание {video}")
+            try:
+                temp_path = local_path + ".part"
+                client.download_sync(remote_path=video, local_path=temp_path)
+                os.rename(temp_path, local_path)
+                downloaded_videos.add(video)
+                logger.info(f"Скачано {video} в {local_path}")
+
+                # Обновляем количество кадров после каждого видео
+                try:
+                    items = client.list(REMOTE_FRAME_DIR)
+                    frame_count = sum(1 for item in items if item.endswith(".jpg"))
+                except Exception as e:
+                    logger.warning(f"Ошибка при обновлении счётчика кадров: {e}")
+                    break
+
+            except Exception as e:
+                logger.error(f"Ошибка при скачивании {video}: {e}")
 
     save_download_history()
     logger.info("Загрузка завершена")
@@ -255,10 +255,10 @@ def clean_cloud_files(json_path, dry_run=False):
 
     # Удаление мусора
     marked_files = set()
-    print(f"[DEBUG] Всего размеченных файлов: {len(marked_files)}")
-    print(f"[DEBUG] Примеры размеченных: {list(marked_files)[:5]}")
-    print(f"[DEBUG] Примеры файлов в директории:")
-    print(os.listdir(MOUNTED_PATH)[:5])
+    logger.debug(f"Всего размеченных файлов: {len(marked_files)}")
+    logger.debug(f"[DEBUG] Примеры размеченных: {list(marked_files)[:5]}")
+    logger.debug(f"[DEBUG] Примеры файлов в директории:")
+    logger.debug(os.listdir(MOUNTED_PATH)[:5])
     deleted, skipped = 0, 0
     for file in os.listdir(MOUNTED_PATH):
         if not file.lower().endswith(".jpg"):
@@ -274,7 +274,7 @@ def clean_cloud_files(json_path, dry_run=False):
         else:
             skipped += 1
 
-    print(f"{'[DRY RUN] ' if dry_run else ''}Удаление завершено. Удалено: {deleted}, оставлено: {skipped}")
+    logger.info(f"{'[DRY RUN] ' if dry_run else ''}Удаление завершено. Удалено: {deleted}, оставлено: {skipped}")
 
 
 def delete_ls_tasks(dry_run=False):
