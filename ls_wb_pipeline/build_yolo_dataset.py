@@ -101,14 +101,14 @@ def main(json_path):
         percent = (count / total) * 100
         print(f"{cls:25} — {count:3} изображений ({percent:.1f}%)")
 
-    print("\nРекомендации:")
-    avg = total / len(class_list)
-    for cls in class_list:
-        diff = summary[cls] - avg
-        if diff < -10:
-            print(f"Классу '{cls}' не хватает примерно {int(-diff)} примеров для баланса.")
-        elif diff > 10:
-            print(f"Класса '{cls}' заметно больше остальных (на +{int(diff)}).")
+    #print("\nРекомендации:")
+    #avg = total / len(class_list)
+    #for cls in class_list:
+    #    diff = summary[cls] - avg
+    #    if diff < -10:
+    #        print(f"Классу '{cls}' не хватает примерно {int(-diff)} примеров для баланса.")
+    #    elif diff > 10:
+    #        print(f"Класса '{cls}' заметно больше остальных (на +{int(diff)}).")
 
 def analyze_full_dataset(dataset_path=OUTPUT_DIR):
     labels_root = os.path.join(dataset_path, "labels")
