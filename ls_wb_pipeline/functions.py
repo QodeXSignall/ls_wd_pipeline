@@ -1,11 +1,12 @@
 from logging.handlers import TimedRotatingFileHandler
-from multiprocessing import Pool
 from webdav3.client import Client
 from itertools import islice
 from pathlib import Path
 import subprocess
-import logging
 import requests
+import tempfile
+import logging
+import random
 import json
 import time
 import os
@@ -146,28 +147,6 @@ def remount_webdav():
         logger.error(f"Ошибка при монтировании WebDAV: {e}")
 
 
-
-def iter_video_files(path):
-    """Генератор, лениво обходит WebDAV и yield'ит валидные mp4-файлы."""
-    items = client.list(path)
-    for item in items:
-        item_path = sanitize_path(f"{path}/{item}")
-        if client.is_dir(item_path):
-            yield from iter_video_files(item_path)
-        elif item.endswith(".mp4"):
-            if any(reg in item for reg in BLACKLISTED_REGISTRATORS):
-                logger.debug(f"Пропущен файл: {item_path} (в чёрном списке)")
-                continue
-            if item_path in downloaded_videos:
-                continue
-            yield item_path
-
-
-def get_all_video_files(max_files=3):
-    """Возвращает не более `max_files` валидных видео из WebDAV."""
-    return list(islice(iter_video_files(BASE_REMOTE_DIR), max_files))
-
-
 def download_videos(max_frames=1000, max_files=1):
     """Загружает видео из WebDAV по одному, пока не достигнет max_frames кадров."""
     remount_webdav()
@@ -221,6 +200,26 @@ def download_videos(max_frames=1000, max_files=1):
     save_download_history()
     logger.info("Загрузка завершена")
 
+
+def get_all_video_files(max_files=3):
+    """Возвращает не более `max_files` валидных видео из WebDAV."""
+    return list(islice(iter_video_files(BASE_REMOTE_DIR), max_files))
+
+
+def iter_video_files(path):
+    """Генератор, лениво обходит WebDAV и yield'ит валидные mp4-файлы."""
+    items = client.list(path)
+    for item in items:
+        item_path = sanitize_path(f"{path}/{item}")
+        if client.is_dir(item_path):
+            yield from iter_video_files(item_path)
+        elif item.endswith(".mp4"):
+            if any(reg in item for reg in BLACKLISTED_REGISTRATORS):
+                logger.debug(f"Пропущен файл: {item_path} (в чёрном списке)")
+                continue
+            if item_path in downloaded_videos:
+                continue
+            yield item_path
 
 def sanitize_path(path):
     return path.replace("//", "/")
@@ -350,7 +349,7 @@ def delete_ls_tasks(dry_run=False):
 
 
 
-def extract_frames(video_path):
+def extract_frames(video_path, frames_per_second=FRAMES_PER_SECOND):
     """Разбивает видео на кадры и загружает в WebDAV с повторной попыткой при ошибках."""
     local_client = Client(WEBDAV_OPTIONS)
     cap = cv2.VideoCapture(video_path)
@@ -371,7 +370,7 @@ def extract_frames(video_path):
         cap.release()
         return video_path, False
 
-    frame_interval = max(int(fps / FRAMES_PER_SECOND), 1)
+    frame_interval = max(int(fps / frames_per_second), 1)
     frame_count = 0
     saved_frame_count = 0
     max_retries = 3  # Количество повторных попыток при ошибке
@@ -480,6 +479,19 @@ def main_process_new_frames(max_frames=3000):
     cleanup_videos()
     logger.info("\n✅ Цикл завершен.")
 
+
+
+def with_retries(func, max_attempts=3, delay=1.0, jitter=0.5, exceptions=(Exception,), log_prefix=""):
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return func()
+        except exceptions as e:
+            if attempt == max_attempts:
+                raise
+            logger.warning(f"{log_prefix}Ошибка (попытка {attempt}/{max_attempts}): {e}. Повтор через {delay} сек.")
+            time.sleep(delay + random.uniform(0, jitter))
+
+
 def process_video_loop(max_frames=3000):
     remount_webdav()
     os.makedirs(LOCAL_VIDEO_DIR, exist_ok=True)
@@ -489,7 +501,7 @@ def process_video_loop(max_frames=3000):
     while True:
         # Проверяем количество кадров перед началом обработки видео
         try:
-            items = client.list(REMOTE_FRAME_DIR)
+            items = with_retries(lambda: client.list(REMOTE_FRAME_DIR), log_prefix="[WebDAV:list REMOTE_FRAME_DIR] ")
             frame_count = sum(1 for item in items if item.endswith(".jpg"))
         except Exception as e:
             logger.error(f"Ошибка при проверке лимита кадров: {e}")
@@ -515,7 +527,8 @@ def process_video_loop(max_frames=3000):
         logger.info(f"Скачивание {video}")
         try:
             temp_path = local_path + ".part"
-            client.download_sync(remote_path=video, local_path=temp_path)
+            with_retries(lambda: client.download_sync(remote_path=video, local_path=temp_path),
+                         log_prefix=f"[WebDAV:download {video}] ")
             os.rename(temp_path, local_path)
             downloaded_videos.add(video)
             logger.info(f"Скачано {video} в {local_path}")
@@ -523,9 +536,34 @@ def process_video_loop(max_frames=3000):
             logger.error(f"Ошибка при скачивании {video}: {e}")
             continue
 
+        # ➕ Получаем тип груза из report.json
+        report_path = os.path.join(os.path.dirname(video), "report.json")
+        try:
+            with tempfile.NamedTemporaryFile(mode="w+b", delete=False) as tmpf:
+                client.download_sync(remote_path=report_path, local_path=tmpf.name)
+                tmpf.seek(0)
+                report_data = json.load(tmpf)
+                switch_events = report_data.get("switch_events", [])
+                if switch_events and isinstance(switch_events, list):
+                    switch_code = switch_events[0].get("switch")
+                    if switch_code == 22:
+                        cargo_type = "euro"
+                    elif switch_code == 23:
+                        cargo_type = "bunker"
+                    else:
+                        cargo_type = "unknown"
+                    logger.info(f"[TYPE] {video} → тип груза: {cargo_type} (switch={switch_code})")
+                else:
+                    logger.warning(f"[WARN] Нет switch_events в {report_path}")
+        except Exception as e:
+            logger.warning(f"[WARN] Не удалось загрузить или распарсить report.json для {video}: {e}")
+
+
         # Нарезаем кадры сразу после скачивания
         logger.info(f"Нарезка кадров из {local_path}")
-        video_path, success = extract_frames(local_path)
+        video_path, success = (extract_frames
+                               (local_path,
+                                frames_per_second=1 if cargo_type == "euro" else 0.1))
         if not success:
             logger.warning(f"Не удалось обработать видео: {video_path}")
 
