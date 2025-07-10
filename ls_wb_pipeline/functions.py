@@ -301,7 +301,9 @@ def delete_ls_tasks(dry_run=False):
     logger.info("[LS] Загружаем все задачи с пагинацией (по страницам)...")
 
     while True:
-        url = f"{LABELSTUDIO_API_URL}/tasks?project={PROJECT_ID}&page={page}&page_size={page_size}"
+        #url = f"{LABELSTUDIO_API_URL}/tasks?project={PROJECT_ID}&page={page}&page_size={page_size}"
+        url = f"{LABELSTUDIO_API_URL}/tasks?project={PROJECT_ID}&page={page}&page_size={page_size}&include=annotations"
+
         logger.debug(f"[DEBUG] URL: {url}")
         r = requests.get(url, headers=HEADERS)
 
