@@ -1,4 +1,5 @@
 from logging.handlers import TimedRotatingFileHandler
+from urllib.parse import urlparse, parse_qs
 from webdav3.client import Client
 from itertools import islice
 from pathlib import Path
@@ -235,10 +236,6 @@ def count_remote_frames(webdav_client):
         return 0
 
 def clean_cloud_files(json_path, dry_run=False):
-    import json
-    import os
-    import urllib.parse
-
     # Загрузка размеченных файлов
     with open(json_path, "r", encoding="utf-8") as f:
         data = json.load(f)
@@ -256,8 +253,10 @@ def clean_cloud_files(json_path, dry_run=False):
             continue
         try:
             image_url = task["data"]["image"]
-            parsed_path = urllib.parse.urlparse(image_url).path
-            image_name = os.path.basename(parsed_path)
+            parsed = urlparse(image_url)
+            query = parse_qs(parsed.query)
+            image_path = query.get("d", [""])[0]
+            image_name = os.path.basename(image_path)
             marked_files.add(image_name)
         except Exception as e:
             logger.warning(f"[EXC] Ошибка при парсинге имени файла: {e}")
