@@ -339,8 +339,9 @@ def delete_ls_tasks(dry_run=False):
 
     to_delete = []
     for task in all_tasks:
-        anns = task.get("annotations")
-        if not anns or not anns[0].get("result"):
+        anns = task.get("annotations", [])
+        has_valid_annotation = any(ann.get("result") for ann in anns)
+        if not has_valid_annotation:
             to_delete.append(task["id"])
 
     logger.info(f"[LS] К удалению отобрано: {len(to_delete)} задач")
