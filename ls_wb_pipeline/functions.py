@@ -297,10 +297,12 @@ def delete_ls_tasks(dry_run=False):
     page_size = 100
     all_tasks = []
     seen_ids = set()
+    saved = 0
 
     logger.info("[LS] Загружаем все задачи с пагинацией (по страницам)...")
 
     while True:
+
         url = f"{LABELSTUDIO_API_URL}/tasks?project={PROJECT_ID}&page={page}&page_size={page_size}"
         #url = f"{LABELSTUDIO_API_URL}/tasks?project={PROJECT_ID}&page={page}&page_size={page_size}&include=annotations"
 
@@ -359,10 +361,11 @@ def delete_ls_tasks(dry_run=False):
                 logger.info(f"[LS DEL] Удалена задача {task_id}")
             else:
                 logger.error(f"[ERR] Не удалось удалить задачу {task_id} — {r.status_code}: {r.text}")
-
-    logger.info(f"{'[DRY RUN] ' if dry_run else ''}Удаление завершено. Всего удалено: {len(to_delete)}")
-
-
+    try:
+        saved = len(all_tasks) - len(to_delete)
+    except:
+        pass
+    logger.info(f"{'[DRY RUN] ' if dry_run else ''}Удаление завершено. Всего удалено: {len(to_delete)}. Сохранено: {saved}")
 
 
 
