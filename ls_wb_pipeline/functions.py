@@ -348,20 +348,6 @@ def delete_ls_tasks(dry_run=False):
             to_delete.append(task_id)
             continue
 
-        has_valid_annotation = False
-        for i, ann in enumerate(anns):
-            result = ann.get("result")
-            logger.debug(f"[LS DEBUG] Задача {task_id}, аннотация #{i}: result={result}")
-            if result:
-                has_valid_annotation = True
-                break
-
-        if not has_valid_annotation:
-            logger.debug(f"[LS DEBUG] Задача {task_id} — нет валидных result, добавляем к удалению")
-            to_delete.append(task_id)
-        else:
-            logger.debug(f"[LS DEBUG] Задача {task_id} — содержит аннотацию, НЕ удаляется")
-
     logger.info(f"[LS] К удалению отобрано: {len(to_delete)} задач")
 
     for task_id in to_delete:
