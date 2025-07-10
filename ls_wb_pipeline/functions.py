@@ -235,7 +235,9 @@ def count_remote_frames(webdav_client):
         return 0
 
 def clean_cloud_files(json_path, dry_run=False):
-    import json, os
+    import json
+    import os
+    import urllib.parse
 
     # Загрузка размеченных файлов
     with open(json_path, "r", encoding="utf-8") as f:
@@ -245,6 +247,7 @@ def clean_cloud_files(json_path, dry_run=False):
 
     for task in data:
         anns = task.get("annotations")
+
         if not anns or not isinstance(anns, list):
             continue
         first_ann = anns[0]
@@ -252,29 +255,39 @@ def clean_cloud_files(json_path, dry_run=False):
         if not results:
             continue
         try:
-            class_name = results[0]["value"]["choices"][0]
             image_url = task["data"]["image"]
-            image_name = os.path.basename(image_url)
+            parsed_path = urllib.parse.urlparse(image_url).path
+            image_name = os.path.basename(parsed_path)
             marked_files.add(image_name)
         except Exception as e:
-            print(e)
+            logger.warning(f"[EXC] Ошибка при парсинге имени файла: {e}")
             continue
 
-    # Удаление мусора
-    logger.debug(f"Всего размеченных файлов: {len(marked_files)}. Удаление неразмеченных...")
+    logger.debug(f"[DEBUG] Всего размеченных файлов: {len(marked_files)}")
+    logger.debug(f"[DEBUG] Примеры размеченных: {sorted(list(marked_files))[:5]}")
+
+    try:
+        actual_files = [f for f in os.listdir(MOUNTED_PATH) if f.lower().endswith(".jpg")]
+    except Exception as e:
+        logger.error(f"Не удалось прочитать директорию {MOUNTED_PATH}: {e}")
+        return
+
+    logger.debug(f"[DEBUG] Всего файлов в директории: {len(actual_files)}")
+    logger.debug(f"[DEBUG] Примеры из директории: {sorted(actual_files)[:5]}")
+
     deleted, skipped = 0, 0
-    for file in os.listdir(MOUNTED_PATH):
-        if not file.lower().endswith(".jpg"):
-            continue
+    for file in actual_files:
         if file not in marked_files:
-            file_path = os.path.join(MOUNTED_PATH, file)
             if dry_run:
-                logger.debug(f"[DRY RUN] Будет удалено: {file}")
+                logger.info(f"[DRY RUN] Будет удалено: {file}")
             else:
-                os.remove(file_path)
-                #logger.debug(f"[DEL] {file}")
-                deleted += 1
+                try:
+                    os.remove(os.path.join(MOUNTED_PATH, file))
+                    deleted += 1
+                except Exception as e:
+                    logger.error(f"Ошибка при удалении {file}: {e}")
         else:
+            logger.debug(f"[KEEP] Размеченный файл: {file}")
             skipped += 1
 
     logger.info(f"{'[DRY RUN] ' if dry_run else ''}Удаление завершено. Удалено: {deleted}, оставлено: {skipped}")
@@ -547,9 +560,9 @@ def process_video_loop(max_frames=3000):
                 if switch_events and isinstance(switch_events, list):
                     switch_code = switch_events[0].get("switch")
                     if switch_code == 22:
-                        cargo_type = "euro"
-                    elif switch_code == 23:
                         cargo_type = "bunker"
+                    elif switch_code == 23:
+                        cargo_type = "euro"
                     else:
                         cargo_type = "unknown"
                     logger.info(f"[TYPE] {video} → тип груза: {cargo_type} (switch={switch_code})")
@@ -563,7 +576,7 @@ def process_video_loop(max_frames=3000):
         logger.info(f"Нарезка кадров из {local_path}")
         video_path, success = (extract_frames
                                (local_path,
-                                frames_per_second=1 if cargo_type == "euro" else 0.1))
+                                frames_per_second=1 if cargo_type == "euro" else 0.25))
         if not success:
             logger.warning(f"Не удалось обработать видео: {video_path}")
 
