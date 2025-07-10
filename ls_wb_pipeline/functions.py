@@ -301,8 +301,8 @@ def delete_ls_tasks(dry_run=False):
     logger.info("[LS] Загружаем все задачи с пагинацией (по страницам)...")
 
     while True:
-        #url = f"{LABELSTUDIO_API_URL}/tasks?project={PROJECT_ID}&page={page}&page_size={page_size}"
-        url = f"{LABELSTUDIO_API_URL}/tasks?project={PROJECT_ID}&page={page}&page_size={page_size}&include=annotations"
+        url = f"{LABELSTUDIO_API_URL}/tasks?project={PROJECT_ID}&page={page}&page_size={page_size}"
+        #url = f"{LABELSTUDIO_API_URL}/tasks?project={PROJECT_ID}&page={page}&page_size={page_size}&include=annotations"
 
         logger.debug(f"[DEBUG] URL: {url}")
         r = requests.get(url, headers=HEADERS)
@@ -342,7 +342,7 @@ def delete_ls_tasks(dry_run=False):
     to_delete = []
     for task in all_tasks:
         task_id = task.get("id")
-        anns = task.get("annotations", [])
+        anns = task.get("total_annotations", 0)
         if not anns:
             logger.debug(f"[LS DEBUG] Задача {task_id} — нет аннотаций")
             to_delete.append(task_id)
