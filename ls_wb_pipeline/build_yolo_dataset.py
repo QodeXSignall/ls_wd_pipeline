@@ -2,6 +2,7 @@ import os
 import json
 import argparse
 from collections import Counter
+from urllib.parse import unquote
 from sklearn.model_selection import train_test_split
 from ls_wb_pipeline import functions
 import shutil
@@ -29,7 +30,7 @@ def main(json_path):
         try:
             class_name = results[0]["value"]["choices"][0]
             image_url = task["data"]["image"]
-            image_name = os.path.basename(image_url)
+            image_name = os.path.basename(unquote(image_url))
             class_names.add(class_name)
             entries.append({
                 "image": image_name,
