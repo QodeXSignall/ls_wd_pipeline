@@ -65,6 +65,9 @@ def main(json_path):
     # Объединяем старые и новые классы, убираем дубли
     all_classes = list(dict.fromkeys(existing_classes + sorted(class_names)))  # сохраняем порядок
 
+    # Гарантируем, что OUTPUT_DIR существует
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+
     # Сохраняем объединённый список
     with open(classes_path, "w", encoding="utf-8") as f:
         for name in all_classes:
@@ -105,7 +108,7 @@ def main(json_path):
     summary = Counter(e["class"] for e in entries)
     print(f"\nДатасет собран. {OUTPUT_DIR}")
     total = sum(summary.values())
-    print("\nРаспределение классов:")
+    print("\nРаспределение классов в заданном JSON:")
     for cls in sorted(class_names):
         count = summary[cls]
         percent = (count / total) * 100
