@@ -390,7 +390,7 @@ def extract_frames(video_path, frames_per_second=FRAMES_PER_SECOND):
     cap.release()
     logger.info(
         f"Извлечено и загружено {saved_frame_count} кадров из {video_path}")
-    return video_path, True
+    return True, video_path, saved_frame_count
 
 
 def cleanup_videos():
@@ -446,13 +446,14 @@ def delete_blacklisted_files():
 
 def main_process_new_frames(max_frames=3000, only_cargo_type: str = None):
     logger.info("\n\U0001f504 Запущен основной цикл создания фреймов")
-    process_video_loop(max_frames=max_frames, only_cargo_type=only_cargo_type)
+    result = process_video_loop(max_frames=max_frames, only_cargo_type=only_cargo_type)
     remount_webdav()
     time.sleep(1)
     mount_webdav()
     sync_label_studio_storage()
     cleanup_videos()
-    return {"status": "frames processed", "max_frames": max_frames}
+    result["status"] = "frames processed"
+    return result
 
 
 
@@ -472,7 +473,7 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None):
     os.makedirs(LOCAL_VIDEO_DIR, exist_ok=True)
 
     video_generator = iter_video_files(BASE_REMOTE_DIR)
-
+    result_dict = {"total_frames": 0, "vid_process_results": []}
     while True:
         # Проверяем количество кадров перед началом обработки видео
         try:
@@ -537,16 +538,15 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None):
             logger.error(f"Ошибка при скачивании {video}: {e}")
             continue
 
-
-
-
         # Нарезаем кадры сразу после скачивания
         logger.info(f"Нарезка кадров из {local_path}")
-        video_path, success = (extract_frames
+        success, video_path, frames = (extract_frames
                                (local_path,
                                 frames_per_second=1 if cargo_type == "euro" else 0.25))
         if not success:
             logger.warning(f"Не удалось обработать видео: {video_path}")
-
+        result_dict["vid_process_results"].append({"video_path": video_path, "frames": frames, "success": success})
         save_download_history()
+    return result_dict
+
 
