@@ -1,5 +1,4 @@
 from sklearn.model_selection import train_test_split
-from ls_wb_pipeline import functions
 from ls_wb_pipeline import settings
 from urllib.parse import unquote
 from collections import Counter
@@ -91,7 +90,7 @@ def main_from_data(data, train_ratio=0.8, test_ratio=0.1, val_ratio=0.1):
 
     # Загрузка уже существующих классов (если есть)
     existing_classes = []
-    classes_path = os.path.join(settings.MOUNTED_PATH, "classes.txt")
+    classes_path = os.path.join(settings.DATASET_PATH, "classes.txt")
 
     if os.path.exists(classes_path):
         with open(classes_path, "r", encoding="utf-8") as f:
