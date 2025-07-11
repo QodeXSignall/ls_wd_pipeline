@@ -485,7 +485,7 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None):
 
         if frame_count >= max_frames:
             logger.info(f"\nДостигнут лимит кадров ({frame_count}/{max_frames}). Остановка загрузки.")
-            break
+            return {"error": f"Достигнут лимит кадров ({frame_count}/{max_frames})"}
         else:
             logger.info(f"\nВ данный момент в хранилище ({frame_count}/{max_frames}). Продолжаем обработку.")
 
@@ -493,7 +493,7 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None):
             video = next(video_generator)
         except StopIteration:
             logger.info("Все видео обработаны")
-            break
+            return {"error": "Все видео обработаны"}
 
         if video in downloaded_videos:
             logger.debug(f"Пропущено {video}, уже скачано.")

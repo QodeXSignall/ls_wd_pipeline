@@ -33,8 +33,7 @@ def build_dataset_and_cleanup(json_bytes: bytes, dry_run: bool = True, train_rat
 
 
 def load_new_frames(max_frames: int = 300, only_cargo_type: str = None):
-    functions.main_process_new_frames(max_frames=max_frames, only_cargo_type=only_cargo_type)
-    return {"status": "frames loaded", "max_frames": max_frames}
+    return functions.main_process_new_frames(max_frames=max_frames, only_cargo_type=only_cargo_type)
 
 
 def get_zip_dataset():
