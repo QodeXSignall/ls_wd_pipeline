@@ -28,6 +28,8 @@ def main(json_path):
     entries = []
     class_names = set()
 
+    # Собираем классы из всего JSON-файла (для корректной статистики)
+    full_summary = Counter()
     for task in data:
         anns = task.get("annotations")
         if not anns or not isinstance(anns, list):
@@ -38,15 +40,7 @@ def main(json_path):
             continue
         try:
             class_name = results[0]["value"]["choices"][0]
-            image_url = task["data"]["image"]
-            image_name = os.path.basename(unquote(image_url))
-            if image_name in existing_images:
-                continue  # ❗️ Пропускаем уже обработанные
-            class_names.add(class_name)
-            entries.append({
-                "image": image_name,
-                "class": class_name
-            })
+            full_summary[class_name] += 1
         except Exception:
             continue
 
@@ -113,12 +107,12 @@ def main(json_path):
 
     print(f"\nДатасет собран. {OUTPUT_DIR}")
     total = sum(summary.values())
-    print("\nРаспределение классов в заданном JSON:")
-    for class_id, class_name in enumerate(all_classes):
-        count = summary[class_id]
-        percent = (count / total) * 100 if total else 0
-        print(f"{class_name:25} — {count:3} изображений ({percent:.1f}%)")
-
+    print(f"\nРаспределение классов в заданном JSON:")
+    total_full = sum(full_summary.values())
+    for cls in all_classes:
+        count = full_summary.get(cls, 0)
+        percent = (count / total_full) * 100 if total_full else 0
+        print(f"{cls:25} — {count:3} изображений ({percent:.1f}%)")
 
 def analyze_full_dataset(dataset_path=OUTPUT_DIR):
     labels_root = os.path.join(dataset_path, "labels")
