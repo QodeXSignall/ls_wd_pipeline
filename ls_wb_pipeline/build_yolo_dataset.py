@@ -27,9 +27,9 @@ def main(json_path):
 
     entries = []
     class_names = set()
-
-    # Собираем классы из всего JSON-файла (для корректной статистики)
     full_summary = Counter()
+
+    # Первый проход — для полной статистики
     for task in data:
         anns = task.get("annotations")
         if not anns or not isinstance(anns, list):
@@ -41,6 +41,29 @@ def main(json_path):
         try:
             class_name = results[0]["value"]["choices"][0]
             full_summary[class_name] += 1
+        except Exception:
+            continue
+
+    # Второй проход — для новых изображений
+    for task in data:
+        anns = task.get("annotations")
+        if not anns or not isinstance(anns, list):
+            continue
+        first_ann = anns[0]
+        results = first_ann.get("result", [])
+        if not results:
+            continue
+        try:
+            class_name = results[0]["value"]["choices"][0]
+            image_url = task["data"]["image"]
+            image_name = os.path.basename(unquote(image_url))
+            if image_name in existing_images:
+                continue  # ❗️ Пропускаем уже обработанные
+            class_names.add(class_name)
+            entries.append({
+                "image": image_name,
+                "class": class_name
+            })
         except Exception:
             continue
 
@@ -84,7 +107,6 @@ def main(json_path):
         train, val = train_test_split(train_val, test_size=SPLIT_RATIO[1]/(SPLIT_RATIO[0]+SPLIT_RATIO[1]), random_state=42)
         split_data = {"train": train, "val": val, "test": test}
 
-
     # Копирование и генерация .txt аннотаций
     for split, items in split_data.items():
         for item in items:
@@ -102,67 +124,10 @@ def main(json_path):
             if os.path.exists(image_src):
                 shutil.copy(image_src, image_dst)
 
-    # Новый summary по индексу классов
-    summary = Counter(class_to_index[e["class"]] for e in entries)
-
     print(f"\nДатасет собран. {OUTPUT_DIR}")
-    total = sum(summary.values())
+    total = sum(full_summary.values())
     print(f"\nРаспределение классов в заданном JSON:")
-    total_full = sum(full_summary.values())
     for cls in all_classes:
         count = full_summary.get(cls, 0)
-        percent = (count / total_full) * 100 if total_full else 0
+        percent = (count / total) * 100 if total else 0
         print(f"{cls:25} — {count:3} изображений ({percent:.1f}%)")
-
-def analyze_full_dataset(dataset_path=OUTPUT_DIR):
-    labels_root = os.path.join(dataset_path, "labels")
-    classes_file = os.path.join(dataset_path, "classes.txt")
-
-    if not os.path.exists(labels_root) or not os.path.exists(classes_file):
-        print("❌ Не найден labels/ или classes.txt — датасет ещё не создан?")
-        return
-
-    # Загрузка названий классов
-    with open(classes_file, "r", encoding="utf-8") as f:
-        classes = [line.strip() for line in f if line.strip()]
-
-    # Счётчики по каждому сплиту
-    split_counters = {
-        "train": Counter(),
-        "val": Counter(),
-        "test": Counter()
-    }
-
-    for split in split_counters:
-        label_dir = os.path.join(labels_root, split)
-        if not os.path.exists(label_dir):
-            continue
-        for fname in os.listdir(label_dir):
-            if fname.endswith(".txt"):
-                fpath = os.path.join(label_dir, fname)
-                with open(fpath, "r", encoding="utf-8") as f:
-                    line = f.readline().strip()
-                    if line.isdigit():
-                        class_id = int(line)
-                        split_counters[split][class_id] += 1
-
-    total = sum(sum(c.values()) for c in split_counters.values())
-    print("\n📦 Общая картина по всем размеченным классам (всего: {}):".format(total))
-    avg = total / len(classes) if classes else 0
-
-    print(f"{'ID':<3} {'Класс':<25} {'Train':>6} {'Val':>6} {'Test':>6} {'Total':>6} {'%':>6}")
-    print("-" * 60)
-    for class_id, class_name in enumerate(classes):
-        tr = split_counters["train"][class_id]
-        va = split_counters["val"][class_id]
-        te = split_counters["test"][class_id]
-        total_cls = tr + va + te
-        percent = (total_cls / total) * 100 if total else 0
-        print(f"{class_id:<3} {class_name:<25} {tr:6} {va:6} {te:6} {total_cls:6} {percent:5.1f}%")
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Сборка YOLO датасета из Label Studio JSON")
-    parser.add_argument("--json", required=True, help="Путь до экспортированного JSON-файла из Label Studio")
-    args = parser.parse_args()
-    main(args.json)
