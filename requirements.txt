@@ -3,3 +3,5 @@ opencv-python
 webdavclient3
 scikit-learn
 fastapi
+python-multipart
+uvicorn
