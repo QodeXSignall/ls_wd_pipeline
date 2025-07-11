@@ -78,6 +78,19 @@ def main(json_path):
         except Exception:
             continue
 
+    # Распределение классов в JSON
+    print(f"\nРаспределение классов в заданном JSON:")
+    total_full = sum(full_summary.values())
+    for cls in sorted(full_summary.keys()):
+        count = full_summary[cls]
+        percent = (count / total_full) * 100 if total_full else 0
+        print(f"{cls:25} — {count:3} изображений ({percent:.1f}%)")
+
+    if not entries:
+        print("Не найдено новых изображений для добавления.")
+        return
+
+
     if not entries:
         print("Не найдено валидных размеченных задач.")
         return
@@ -136,12 +149,7 @@ def main(json_path):
                 shutil.copy(image_src, image_dst)
 
     print(f"\nДатасет собран. {OUTPUT_DIR}")
-    total = sum(full_summary.values())
-    print(f"\nРаспределение классов в заданном JSON:")
-    for cls in all_classes:
-        count = full_summary.get(cls, 0)
-        percent = (count / total) * 100 if total else 0
-        print(f"{cls:25} — {count:3} изображений ({percent:.1f}%)")
+
 
 
 def analyze_full_dataset(dataset_path=OUTPUT_DIR):
