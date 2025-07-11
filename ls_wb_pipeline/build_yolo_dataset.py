@@ -14,6 +14,16 @@ SPLIT_RATIO = (0.8, 0.1, 0.1)  # train, val, test
 
 def main(json_path):
     # 1. Загрузка уже существующих изображений (чтобы избежать дубликатов)
+    # Загрузка уже размеченных изображений по .txt
+    existing_labels = set()
+    for split in ("train", "val", "test"):
+        label_dir = os.path.join(OUTPUT_DIR, "labels", split)
+        if os.path.exists(label_dir):
+            for fname in os.listdir(label_dir):
+                if fname.lower().endswith(".txt"):
+                    image_name = fname.replace(".txt", ".jpg")
+                    existing_labels.add(image_name)
+
     existing_images = set()
     for split in ("train", "val", "test"):
         img_dir = os.path.join(OUTPUT_DIR, "images", split)
@@ -57,8 +67,9 @@ def main(json_path):
             class_name = results[0]["value"]["choices"][0]
             image_url = task["data"]["image"]
             image_name = os.path.basename(unquote(image_url))
-            if image_name in existing_images:
-                continue  # ❗️ Пропускаем уже обработанные
+            if image_name in existing_images or image_name in existing_labels:
+                continue  # ❗️ Пропускаем уже размеченные
+
             class_names.add(class_name)
             entries.append({
                 "image": image_name,
