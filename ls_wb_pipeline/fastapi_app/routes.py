@@ -18,8 +18,8 @@ def build_dataset(
     file: UploadFile = File(...),
     dry_run: bool = Query(False, description="Построить датасет без удаления неразмеченных кадров"),
     train_ratio: float = Query(0.8, description="Тренировочная часть"),
-    val_ratio: int = Query(0.1, description="Валидационная часть"),
-    test_ratio: int = Query(0.1, description="Тестовая часть")):
+    val_ratio: float = Query(0.1, description="Валидационная часть"),
+    test_ratio: float = Query(0.1, description="Тестовая часть")):
     contents = file.file.read()
     return build_dataset_and_cleanup(
         contents, dry_run=dry_run, train_ratio=train_ratio, test_ratio=test_ratio, val_ratio=val_ratio)
