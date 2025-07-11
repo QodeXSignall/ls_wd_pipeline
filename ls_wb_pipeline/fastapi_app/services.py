@@ -12,7 +12,7 @@ CONFIG_PATH = "config.cfg"
 
 def analyze_dataset():
     result = build_dataset.analyze_dataset()
-    return {"status": "analyzed", result: result}
+    return {"status": "analyzed", "result": result}
 
 
 def build_dataset_and_cleanup(json_bytes: bytes, dry_run: bool = True):
@@ -52,7 +52,7 @@ def get_zip_dataset():
 
     return archive_path
 
-def get_config():
+def get_config_service():
     config = configparser.ConfigParser()
     config.read(CONFIG_PATH)
     return {section: dict(config[section]) for section in config.sections()}

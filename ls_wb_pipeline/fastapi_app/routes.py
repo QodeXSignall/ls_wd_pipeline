@@ -5,7 +5,7 @@ from ls_wb_pipeline.fastapi_app.services import (
     build_dataset_and_cleanup,
     get_zip_dataset,
     load_new_frames,
-    get_config,
+    get_config_service,
     set_config_from_dict,
     upload_config_file,
     get_config_path
@@ -15,7 +15,7 @@ router = APIRouter()
 
 @router.get("/config")
 def get_config():
-    return get_config()
+    return get_config_service()
 
 
 @router.post("/config")
