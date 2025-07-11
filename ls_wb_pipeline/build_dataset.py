@@ -1,22 +1,20 @@
-import os
-import json
-import argparse
-from collections import Counter
-from urllib.parse import unquote
 from sklearn.model_selection import train_test_split
 from ls_wb_pipeline import functions
+from ls_wb_pipeline import settings
+from urllib.parse import unquote
+from collections import Counter
+import argparse
+import json
 import shutil
+import os
 
 # ==== НАСТРОЙКИ (можно менять внутри скрипта) ====
-SOURCE_IMAGE_DIR = functions.MOUNTED_PATH
-OUTPUT_DIR = "./dataset_yolo"
-
 
 def main_from_data(data, train_ratio=0.8, test_ratio=0.1, val_ratio=0.1):
     # Загрузка уже размеченных изображений по .txt
     existing_labels = set()
     for split in ("train", "val", "test"):
-        label_dir = os.path.join(OUTPUT_DIR, "labels", split)
+        label_dir = os.path.join(settings.DATASET_PATH, "labels", split)
         if os.path.exists(label_dir):
             for fname in os.listdir(label_dir):
                 if fname.lower().endswith(".txt"):
@@ -25,7 +23,7 @@ def main_from_data(data, train_ratio=0.8, test_ratio=0.1, val_ratio=0.1):
 
     existing_images = set()
     for split in ("train", "val", "test"):
-        img_dir = os.path.join(OUTPUT_DIR, "images", split)
+        img_dir = os.path.join(settings.DATASET_PATH, "images", split)
         if os.path.exists(img_dir):
             for fname in os.listdir(img_dir):
                 if fname.lower().endswith(".jpg"):
@@ -93,7 +91,7 @@ def main_from_data(data, train_ratio=0.8, test_ratio=0.1, val_ratio=0.1):
 
     # Загрузка уже существующих классов (если есть)
     existing_classes = []
-    classes_path = os.path.join(OUTPUT_DIR, "classes.txt")
+    classes_path = os.path.join(settings.MOUNTED_PATH, "classes.txt")
 
     if os.path.exists(classes_path):
         with open(classes_path, "r", encoding="utf-8") as f:
@@ -103,7 +101,7 @@ def main_from_data(data, train_ratio=0.8, test_ratio=0.1, val_ratio=0.1):
     all_classes = list(dict.fromkeys(existing_classes + sorted(class_names)))  # сохраняем порядок
 
     # Гарантируем, что OUTPUT_DIR существует
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    os.makedirs(settings.DATASET_PATH, exist_ok=True)
 
     # Сохраняем объединённый список
     with open(classes_path, "w", encoding="utf-8") as f:
@@ -116,8 +114,8 @@ def main_from_data(data, train_ratio=0.8, test_ratio=0.1, val_ratio=0.1):
     # Создание папок
     splits = ["train", "val", "test"]
     for split in splits:
-        os.makedirs(os.path.join(OUTPUT_DIR, "images", split), exist_ok=True)
-        os.makedirs(os.path.join(OUTPUT_DIR, "labels", split), exist_ok=True)
+        os.makedirs(os.path.join(settings.DATASET_PATH, "images", split), exist_ok=True)
+        os.makedirs(os.path.join(settings.DATASET_PATH, "labels", split), exist_ok=True)
 
     # Разделение на train/val/test
     if len(entries) < 3:
@@ -132,9 +130,9 @@ def main_from_data(data, train_ratio=0.8, test_ratio=0.1, val_ratio=0.1):
         for item in items:
             image_name = item["image"]
             class_id = class_to_index[item["class"]]
-            label_file = os.path.join(OUTPUT_DIR, "labels", split, image_name.replace(".jpg", ".txt"))
-            image_src = os.path.join(SOURCE_IMAGE_DIR, image_name)
-            image_dst = os.path.join(OUTPUT_DIR, "images", split, image_name)
+            label_file = os.path.join(settings.DATASET_PATH, "labels", split, image_name.replace(".jpg", ".txt"))
+            image_src = os.path.join(settings.MOUNTED_PATH, image_name)
+            image_dst = os.path.join(settings.DATASET_PATH, "images", split, image_name)
 
             # пишем класс в YOLO-формате
             with open(label_file, "w") as f:
@@ -144,7 +142,7 @@ def main_from_data(data, train_ratio=0.8, test_ratio=0.1, val_ratio=0.1):
             if os.path.exists(image_src):
                 shutil.copy(image_src, image_dst)
 
-    print(f"\nДатасет собран. {OUTPUT_DIR}")
+    print(f"\nДатасет собран. {settings.DATASET_PATH}")
 
 
 def main_from_path(json_path):
@@ -153,7 +151,7 @@ def main_from_path(json_path):
     main_from_data(data)
 
 
-def analyze_dataset(dataset_path=OUTPUT_DIR):
+def analyze_dataset(dataset_path=settings.DATASET_PATH):
     labels_root = os.path.join(dataset_path, "labels")
     classes_file = os.path.join(dataset_path, "classes.txt")
 

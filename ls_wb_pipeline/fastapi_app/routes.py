@@ -1,7 +1,7 @@
 from fastapi import APIRouter, UploadFile, File, Query
 from fastapi.responses import FileResponse, JSONResponse
 from ls_wb_pipeline.fastapi_app.services import (
-    analyze_dataset,
+    analyze_dataset_service,
     build_dataset_and_cleanup,
     get_zip_dataset,
     load_new_frames,
@@ -26,7 +26,7 @@ def build_dataset(
 
 @router.get("/analyze-dataset", tags=["dataset"])
 def analyze_dataset():
-    return analyze_dataset()
+    return analyze_dataset_service()
 
 @router.get("/download-dataset", tags=["dataset"])
 def download_dataset():

@@ -8,13 +8,13 @@ import io
 import os
 
 
-def analyze_dataset():
+def analyze_dataset_service():
     result = build_dataset.analyze_dataset()
     return {"status": "analyzed", "result": result}
 
 
 def build_dataset_and_cleanup(json_bytes: bytes, dry_run: bool = True, train_ratio=0.8, test_ratio=0.1, val_ratio=0.1):
-    before = analyze_dataset()
+    before = analyze_dataset_service()
 
     # Читаем JSON из байтов
     json_data = json.load(io.BytesIO(json_bytes))
@@ -23,7 +23,7 @@ def build_dataset_and_cleanup(json_bytes: bytes, dry_run: bool = True, train_rat
     functions.clean_cloud_files_from_data(json_data, dry_run=dry_run)  # аналогично
     functions.delete_ls_tasks(dry_run=dry_run)
 
-    after = analyze_dataset()
+    after = analyze_dataset_service()
     return {
         "status": "dataset built",
         "dry_run": dry_run,
