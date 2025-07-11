@@ -452,7 +452,7 @@ def main_process_new_frames(max_frames=3000, only_cargo_type: str = None):
     mount_webdav()
     sync_label_studio_storage()
     cleanup_videos()
-    logger.info("\n✅ Цикл завершен.")
+    return {"status": "frames processed", "max_frames": max_frames}
 
 
 
