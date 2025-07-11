@@ -1,6 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, Query
 from fastapi.responses import FileResponse
-from services import (
+from ls_wb_pipeline.fastapi_app.services import (
     analyze_dataset,
     build_dataset_and_cleanup,
     get_zip_dataset,

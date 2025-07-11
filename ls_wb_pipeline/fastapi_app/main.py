@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from routes import router
+from ls_wb_pipeline.fastapi_app.routes import router
 
 app = FastAPI(title="LS WebDAV Pipeline API")
 
