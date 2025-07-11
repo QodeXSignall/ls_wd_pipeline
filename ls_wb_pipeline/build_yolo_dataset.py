@@ -54,9 +54,24 @@ def main(json_path):
         print("Не найдено валидных размеченных задач.")
         return
 
-    # Подготовка классов
-    class_list = sorted(class_names)
-    class_to_index = {name: i for i, name in enumerate(class_list)}
+    # Загрузка уже существующих классов (если есть)
+    existing_classes = []
+    classes_path = os.path.join(OUTPUT_DIR, "classes.txt")
+
+    if os.path.exists(classes_path):
+        with open(classes_path, "r", encoding="utf-8") as f:
+            existing_classes = [line.strip() for line in f if line.strip()]
+
+    # Объединяем старые и новые классы, убираем дубли
+    all_classes = list(dict.fromkeys(existing_classes + sorted(class_names)))  # сохраняем порядок
+
+    # Сохраняем объединённый список
+    with open(classes_path, "w", encoding="utf-8") as f:
+        for name in all_classes:
+            f.write(f"{name}\n")
+
+    # ✅ Создаём class_to_index на основе all_classes
+    class_to_index = {name: i for i, name in enumerate(all_classes)}
 
     # Создание папок
     splits = ["train", "val", "test"]
@@ -86,40 +101,15 @@ def main(json_path):
             if os.path.exists(image_src):
                 shutil.copy(image_src, image_dst)
 
-    # Загрузка уже существующих классов (если есть)
-    existing_classes = []
-    classes_path = os.path.join(OUTPUT_DIR, "classes.txt")
-
-    if os.path.exists(classes_path):
-        with open(classes_path, "r", encoding="utf-8") as f:
-            existing_classes = [line.strip() for line in f if line.strip()]
-
-    # Объединяем старые и новые классы, убираем дубли
-    all_classes = list(dict.fromkeys(existing_classes + class_list))  # сохраняем порядок
-
-    # Сохраняем объединённый список
-    with open(classes_path, "w", encoding="utf-8") as f:
-        for name in all_classes:
-            f.write(f"{name}\n")
-
     # Распределение классов
     summary = Counter(e["class"] for e in entries)
     print(f"\nДатасет собран. {OUTPUT_DIR}")
     total = sum(summary.values())
     print("\nРаспределение классов:")
-    for cls in class_list:
+    for cls in sorted(class_names):
         count = summary[cls]
         percent = (count / total) * 100
         print(f"{cls:25} — {count:3} изображений ({percent:.1f}%)")
-
-    #print("\nРекомендации:")
-    #avg = total / len(class_list)
-    #for cls in class_list:
-    #    diff = summary[cls] - avg
-    #    if diff < -10:
-    #        print(f"Классу '{cls}' не хватает примерно {int(-diff)} примеров для баланса.")
-    #    elif diff > 10:
-    #        print(f"Класса '{cls}' заметно больше остальных (на +{int(diff)}).")
 
 def analyze_full_dataset(dataset_path=OUTPUT_DIR):
     labels_root = os.path.join(dataset_path, "labels")
@@ -149,7 +139,7 @@ def analyze_full_dataset(dataset_path=OUTPUT_DIR):
 
     total = sum(counter.values())
     print("\n📦 Общая картина по всем размеченным классам:")
-    avg = total / len(classes)
+    avg = total / len(classes) if classes else 0
 
     for class_id, name in enumerate(classes):
         count = counter[class_id]
@@ -161,7 +151,6 @@ def analyze_full_dataset(dataset_path=OUTPUT_DIR):
             print("   ℹ️ Превышает среднее")
         else:
             print("")
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Сборка YOLO датасета из Label Studio JSON")
