@@ -235,11 +235,14 @@ def count_remote_frames(webdav_client):
         logger.error(f"Ошибка при подсчёте кадров в WebDAV: {e}")
         return 0
 
-def clean_cloud_files(json_path, dry_run=False):
+def clean_cloud_files_from_path(json_path, dry_run=False):
     # Загрузка размеченных файлов
     with open(json_path, "r", encoding="utf-8") as f:
         data = json.load(f)
+    clean_cloud_files_from_data(data, dry_run=dry_run)
 
+def clean_cloud_files_from_data(data, dry_run=False):
+    # Загрузка размеченных файлов
     marked_files = set()
 
     for task in data:
@@ -284,7 +287,6 @@ def clean_cloud_files(json_path, dry_run=False):
             skipped += 1
 
     logger.info(f"{'[DRY RUN] ' if dry_run else ''}Удаление завершено. Удалено: {deleted}, оставлено: {skipped}")
-
 
 def delete_ls_tasks(dry_run=False):
     page = 1
@@ -442,7 +444,7 @@ def cleanup_videos():
               f.endswith(".mp4")]
     for video in videos:
         os.remove(video)
-        print(f"Deleted {video}")
+        logger.debug(f"Deleted {video}")
 
 
 def sync_label_studio_storage():
@@ -485,9 +487,11 @@ def delete_blacklisted_files():
 '''
 
 
-def main_process_new_frames(max_frames=3000):
+def main_process_new_frames(max_frames=3000, cargo_type: str = None):
     logger.info("\n\U0001f504 Запущен основной цикл создания фреймов")
-    process_video_loop(max_frames=max_frames)
+    process_video_loop(max_frames=max_frames, cargo_type=cargo_type)
+    remount_webdav()
+    time.sleep(1)
     mount_webdav()
     sync_label_studio_storage()
     cleanup_videos()
@@ -506,7 +510,7 @@ def with_retries(func, max_attempts=3, delay=1.0, jitter=0.5, exceptions=(Except
             time.sleep(delay + random.uniform(0, jitter))
 
 
-def process_video_loop(max_frames=3000):
+def process_video_loop(max_frames=3000, only_cargo_type: str = None):
     remount_webdav()
     os.makedirs(LOCAL_VIDEO_DIR, exist_ok=True)
 
@@ -537,19 +541,6 @@ def process_video_loop(max_frames=3000):
             logger.debug(f"Пропущено {video}, уже скачано.")
             continue
 
-        local_path = os.path.join(LOCAL_VIDEO_DIR, os.path.basename(video))
-        logger.info(f"Скачивание {video}")
-        try:
-            temp_path = local_path + ".part"
-            with_retries(lambda: client.download_sync(remote_path=video, local_path=temp_path),
-                         log_prefix=f"[WebDAV:download {video}] ")
-            os.rename(temp_path, local_path)
-            downloaded_videos.add(video)
-            logger.info(f"Скачано {video} в {local_path}")
-        except Exception as e:
-            logger.error(f"Ошибка при скачивании {video}: {e}")
-            continue
-
         # ➕ Получаем тип груза из report.json
         report_path = os.path.join(os.path.dirname(video), "report.json")
         try:
@@ -571,6 +562,25 @@ def process_video_loop(max_frames=3000):
                     logger.warning(f"[WARN] Нет switch_events в {report_path}")
         except Exception as e:
             logger.warning(f"[WARN] Не удалось загрузить или распарсить report.json для {video}: {e}")
+
+        if only_cargo_type and cargo_type != only_cargo_type:
+            logger.debug(f"Тип груза - {cargo_type}. Но качаем только - {only_cargo_type}, пропуск...")
+            continue
+
+        local_path = os.path.join(LOCAL_VIDEO_DIR, os.path.basename(video))
+        logger.info(f"Скачивание {video}")
+        try:
+            temp_path = local_path + ".part"
+            with_retries(lambda: client.download_sync(remote_path=video, local_path=temp_path),
+                         log_prefix=f"[WebDAV:download {video}] ")
+            os.rename(temp_path, local_path)
+            downloaded_videos.add(video)
+            logger.info(f"Скачано {video} в {local_path}")
+        except Exception as e:
+            logger.error(f"Ошибка при скачивании {video}: {e}")
+            continue
+
+
 
 
         # Нарезаем кадры сразу после скачивания
