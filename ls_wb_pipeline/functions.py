@@ -444,9 +444,9 @@ def delete_blacklisted_files():
 '''
 
 
-def main_process_new_frames(max_frames=3000, cargo_type: str = None):
+def main_process_new_frames(max_frames=3000, only_cargo_type: str = None):
     logger.info("\n\U0001f504 Запущен основной цикл создания фреймов")
-    process_video_loop(max_frames=max_frames, cargo_type=cargo_type)
+    process_video_loop(max_frames=max_frames, only_cargo_type=only_cargo_type)
     remount_webdav()
     time.sleep(1)
     mount_webdav()
