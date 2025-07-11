@@ -1,4 +1,5 @@
 from ls_wb_pipeline import functions, build_dataset
+from ls_wb_pipeline import settings
 import configparser
 import tempfile
 import shutil
@@ -7,20 +8,17 @@ import io
 import os
 
 
-CONFIG_PATH = "config.cfg"
-
-
 def analyze_dataset():
     result = build_dataset.analyze_dataset()
     return {"status": "analyzed", "result": result}
 
 
-def build_dataset_and_cleanup(json_bytes: bytes, dry_run: bool = True):
+def build_dataset_and_cleanup(json_bytes: bytes, dry_run: bool = True, train_ratio=0.8, test_ratio=0.1, val_ratio=0.1):
     before = analyze_dataset()
 
     # Читаем JSON из байтов
     json_data = json.load(io.BytesIO(json_bytes))
-    build_dataset.main_from_data(json_data)  # нужна будет версия main, принимающая уже загруженные данные
+    build_dataset.main_from_data(json_data, train_ratio=train_ratio, test_ratio=test_ratio, val_ratio=val_ratio)  # нужна будет версия main, принимающая уже загруженные данные
 
     functions.clean_cloud_files_from_data(json_data, dry_run=dry_run)  # аналогично
     functions.delete_ls_tasks(dry_run=dry_run)
@@ -51,26 +49,3 @@ def get_zip_dataset():
     shutil.make_archive(archive_path.replace(".zip", ""), "zip", dataset_dir)
 
     return archive_path
-
-def get_config_service():
-    config = configparser.ConfigParser()
-    config.read(CONFIG_PATH)
-    return {section: dict(config[section]) for section in config.sections()}
-
-def set_config_from_dict(new_config: dict):
-    config = configparser.ConfigParser()
-    for section, values in new_config.items():
-        config[section] = values
-    with open(CONFIG_PATH, "w") as f:
-        config.write(f)
-    return {"status": "config updated"}
-
-
-def upload_config_file(file):
-    with open(CONFIG_PATH, "wb") as f:
-        f.write(file.file.read())
-    return {"status": "uploaded"}
-
-def get_config_path():
-    return CONFIG_PATH
-

@@ -10,9 +10,9 @@ import shutil
 # ==== НАСТРОЙКИ (можно менять внутри скрипта) ====
 SOURCE_IMAGE_DIR = functions.MOUNTED_PATH
 OUTPUT_DIR = "./dataset_yolo"
-SPLIT_RATIO = (0.8, 0.1, 0.1)  # train, val, test
 
-def main_from_data(data):
+
+def main_from_data(data, train_ratio=0.8, test_ratio=0.1, val_ratio=0.1):
     # Загрузка уже размеченных изображений по .txt
     existing_labels = set()
     for split in ("train", "val", "test"):
@@ -123,8 +123,8 @@ def main_from_data(data):
     if len(entries) < 3:
         split_data = {"train": entries, "val": [], "test": []}
     else:
-        train_val, test = train_test_split(entries, test_size=SPLIT_RATIO[2], random_state=42)
-        train, val = train_test_split(train_val, test_size=SPLIT_RATIO[1]/(SPLIT_RATIO[0]+SPLIT_RATIO[1]), random_state=42)
+        train_val, test = train_test_split(entries, test_size=test_ratio, random_state=42)
+        train, val = train_test_split(train_val, test_size=val_ratio/(train_ratio+val_ratio), random_state=42)
         split_data = {"train": train, "val": val, "test": test}
 
     # Копирование и генерация .txt аннотаций

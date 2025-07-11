@@ -1,12 +1,12 @@
-from logging.handlers import TimedRotatingFileHandler
 from urllib.parse import urlparse, parse_qs
+from ls_wb_pipeline.logger import logger
+from ls_wb_pipeline.settings import *
 from webdav3.client import Client
 from itertools import islice
 from pathlib import Path
 import subprocess
 import requests
 import tempfile
-import logging
 import random
 import json
 import time
@@ -14,27 +14,6 @@ import os
 import cv2
 
 
-# Настройка логирования
-LOG_DIR = str(Path(__file__).parent / "logs")
-os.makedirs(LOG_DIR, exist_ok=True)
-LOG_FILE = os.path.join(LOG_DIR, "pipeline.log")
-
-logger = logging.getLogger("PipelineLogger")
-logger.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-
-# Обработчик для записи логов в файл
-file_handler = TimedRotatingFileHandler(LOG_FILE, when="midnight", interval=1,
-                                        backupCount=30, encoding='utf-8')
-file_handler.setFormatter(formatter)
-file_handler.setLevel(logging.INFO)
-logger.addHandler(file_handler)
-
-# Обработчик для вывода логов в stdout
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(formatter)
-console_handler.setLevel(logging.DEBUG)
-logger.addHandler(console_handler)
 
 # Конфигурация WebDAV
 WEBDAV_OPTIONS = {
@@ -45,29 +24,7 @@ WEBDAV_OPTIONS = {
 }
 client = Client(WEBDAV_OPTIONS)
 
-# Параметры
-BLACKLISTED_REGISTRATORS = {"018270348452", "104039", "2024050601",
-                            "118270348452"}
-LABELSTUDIO_HOST = "http://localhost"
-LABELSTUDIO_PORT = 8081
-LABELSTUDIO_STORAGE_ID = 2
-PROJECT_ID = 2
-BASE_REMOTE_DIR = "/Tracker/Видео выгрузок"
-LOCAL_VIDEO_DIR = str(Path(
-    __file__).parent / "misc/videos_temp")  # Локальная папка для временных видео
-FRAME_DIR_TEMP = str(Path(__file__).parent / "misc/frames_temp")
-REMOTE_FRAME_DIR = "/Tracker/annotation_frames"
-ANNOTATIONS_FILE = "annotations.json"
-LABELSTUDIO_API_URL = f"{LABELSTUDIO_HOST}:{LABELSTUDIO_PORT}/api"
-LABELSTUDIO_TOKEN = os.environ.get("labelstudio_token")
-HEADERS = {"Authorization": f"Token {LABELSTUDIO_TOKEN}", }
-DATASET_SPLIT = {"train": 0.7, "test": 0.2, "val": 0.1}
-CYCLE_INTERVAL = 3600  # Время между циклами в секундах (1 час)
-MOUNTED_PATH = "/mnt/webdav_frames"  # Локальный путь для монтирования WebDAV
-MOUNTED_FRAME_DIR = os.path.join(MOUNTED_PATH, "frames")
-FRAMES_PER_SECOND = 1
-WEBDAV_REMOTE = "webdav:/Tracker/annotation_frames"
-DOWNLOAD_HISTORY_FILE = "downloaded_videos.json"
+
 
 # Загруженные файлы
 if os.path.exists(DOWNLOAD_HISTORY_FILE):
