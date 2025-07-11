@@ -108,15 +108,17 @@ def main(json_path):
             if os.path.exists(image_src):
                 shutil.copy(image_src, image_dst)
 
-    # Распределение классов
-    summary = Counter(e["class"] for e in entries)
+    # Новый summary по индексу классов
+    summary = Counter(class_to_index[e["class"]] for e in entries)
+
     print(f"\nДатасет собран. {OUTPUT_DIR}")
     total = sum(summary.values())
     print("\nРаспределение классов в заданном JSON:")
-    for cls in sorted(class_names):
-        count = summary[cls]
-        percent = (count / total) * 100
-        print(f"{cls:25} — {count:3} изображений ({percent:.1f}%)")
+    for class_id, class_name in enumerate(all_classes):
+        count = summary[class_id]
+        percent = (count / total) * 100 if total else 0
+        print(f"{class_name:25} — {count:3} изображений ({percent:.1f}%)")
+
 
 def analyze_full_dataset(dataset_path=OUTPUT_DIR):
     labels_root = os.path.join(dataset_path, "labels")
