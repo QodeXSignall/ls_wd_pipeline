@@ -262,17 +262,11 @@ def clean_cloud_files(json_path, dry_run=False):
             logger.warning(f"[EXC] Ошибка при парсинге имени файла: {e}")
             continue
 
-    logger.debug(f"[DEBUG] Всего размеченных файлов: {len(marked_files)}")
-    logger.debug(f"[DEBUG] Примеры размеченных: {sorted(list(marked_files))[:5]}")
-
     try:
         actual_files = [f for f in os.listdir(MOUNTED_PATH) if f.lower().endswith(".jpg")]
     except Exception as e:
         logger.error(f"Не удалось прочитать директорию {MOUNTED_PATH}: {e}")
         return
-
-    logger.debug(f"[DEBUG] Всего файлов в директории: {len(actual_files)}")
-    logger.debug(f"[DEBUG] Примеры из директории: {sorted(actual_files)[:5]}")
 
     deleted, skipped = 0, 0
     for file in actual_files:
@@ -354,11 +348,11 @@ def delete_ls_tasks(dry_run=False):
 
     for task_id in to_delete:
         if dry_run:
-            logger.info(f"[DRY RUN] Будет удалена задача {task_id}")
+            logger.debug(f"[DRY RUN] Будет удалена задача {task_id}")
         else:
             r = requests.delete(f"{LABELSTUDIO_API_URL}/tasks/{task_id}", headers=HEADERS)
             if r.status_code == 204:
-                logger.info(f"[LS DEL] Удалена задача {task_id}")
+                logger.debug(f"[LS DEL] Удалена задача {task_id}")
             else:
                 logger.error(f"[ERR] Не удалось удалить задачу {task_id} — {r.status_code}: {r.text}")
     try:

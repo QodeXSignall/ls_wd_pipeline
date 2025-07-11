@@ -13,6 +13,15 @@ OUTPUT_DIR = "./dataset_yolo"
 SPLIT_RATIO = (0.8, 0.1, 0.1)  # train, val, test
 
 def main(json_path):
+    # 1. Загрузка уже существующих изображений (чтобы избежать дубликатов)
+    existing_images = set()
+    for split in ("train", "val", "test"):
+        img_dir = os.path.join(OUTPUT_DIR, "images", split)
+        if os.path.exists(img_dir):
+            for fname in os.listdir(img_dir):
+                if fname.lower().endswith(".jpg"):
+                    existing_images.add(fname)
+
     with open(json_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
@@ -31,6 +40,8 @@ def main(json_path):
             class_name = results[0]["value"]["choices"][0]
             image_url = task["data"]["image"]
             image_name = os.path.basename(unquote(image_url))
+            if image_name in existing_images:
+                continue  # ❗️ Пропускаем уже обработанные
             class_names.add(class_name)
             entries.append({
                 "image": image_name,
