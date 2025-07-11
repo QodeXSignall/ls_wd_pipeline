@@ -6,6 +6,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_PATH = os.path.join(BASE_DIR, "config.cfg")
 BLACKLISTED_REGISTRATORS = {"018270348452", "104039", "2024050601",
                             "118270348452"}
+DATASET_PATH = os.path.join(BASE_DIR, "dataset")
 LABELSTUDIO_HOST = "http://localhost"
 LABELSTUDIO_PORT = 8081
 LABELSTUDIO_STORAGE_ID = 2

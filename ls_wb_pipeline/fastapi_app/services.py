@@ -49,3 +49,11 @@ def get_zip_dataset():
     shutil.make_archive(archive_path.replace(".zip", ""), "zip", dataset_dir)
 
     return archive_path
+
+
+def delete_dataset_service():
+    if os.path.exists(settings.DATASET_PATH):
+        shutil.rmtree(settings.DATASET_PATH)
+        return {"status": "deleted", "path": settings.DATASET_PATH}
+    else:
+        return {"status": "not found", "path": settings.DATASET_PATH}
