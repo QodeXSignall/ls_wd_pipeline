@@ -14,7 +14,7 @@ router = APIRouter()
 
 
 
-@router.post("/build-dataset", tags=["dataset"])
+@router.post("/enrich-dataset", tags=["dataset"])
 def enrich_dataset(
     file: UploadFile = File(...),
     dry_run: bool = Query(False, description="Построить датасет без удаления неразмеченных кадров"),
