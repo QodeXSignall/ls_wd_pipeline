@@ -40,7 +40,7 @@ def delete_dataset():
 @router.post("/load-frames", tags=["frames"])
 def load_frames(max_frames: int = Query(300, description="Максимум кадров"),
                 only_cargo_type: str = Query(default=None, description="Вид контейнера (bunker/euro). По умолчанию, качает все"),
-                fps: int = Query(default=None,
+                fps: float = Query(default=None,
                                  description=f"Количество кадров в секунду. "
                                              f"По умолчанию, {settings.FRAMES_PER_SECOND_EURO}fps euro, "
                                              f"{settings.FRAMES_PER_SECOND_BUNKER}fps bunker")):

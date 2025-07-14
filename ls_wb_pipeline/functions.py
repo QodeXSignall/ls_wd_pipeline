@@ -553,7 +553,7 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
         # Нарезаем кадры сразу после скачивания
         logger.info(f"Нарезка кадров из {local_path}")
         if not fps:
-            fps = set if cargo_type == "euro" else 0.25
+            fps = 1 if cargo_type == "euro" else 0.25
         success, video_path, frames = (extract_frames(local_path, frames_per_second=fps))
         if not success:
             logger.warning(f"Не удалось обработать видео: {video_path}")
