@@ -480,6 +480,13 @@ def with_retries(func, max_attempts=3, delay=1.0, jitter=0.5, exceptions=(Except
             logger.warning(f"{log_prefix}Ошибка (попытка {attempt}/{max_attempts}): {e}. Повтор через {delay} сек.")
             time.sleep(delay + random.uniform(0, jitter))
 
+def parse_video_name(video_name: str) -> str:
+    video_name = video_name.split("_")
+    reg_folder = video_name[0]
+    other = video_name[1]
+    return
+
+
 def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float = None, concrete_video_name: str = None):
     remount_webdav()
     os.makedirs(LOCAL_VIDEO_DIR, exist_ok=True)
@@ -487,8 +494,8 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
     # Ускоряем поиск видео, распарсив название и выполняя поиск в конкретной папке
     if concrete_video_name:
         try:
-            remote_dir = f"{BASE_REMOTE_DIR}/{concrete_video_name.replace('.mp4', '') if concrete_video_name.endswith('.mp4') else concrete_video_name}"
-            remote_dir = urllib.parse.unquote(remote_dir)
+            reg_folder, other = parse_video_name(concrete_video_name)
+            remote_dir = f"{BASE_REMOTE_DIR}/{reg_folder}/{other.replace('.mp4', '') if other.endswith('.mp4') else other}"
         except:
             return {
                 "error": f"Не удалось распарсить название видео {concrete_video_name}. Убедитесь, что он в формате REGID_Y.m.d H.M.S-H.M.S.mp4"}
