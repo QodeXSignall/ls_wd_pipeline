@@ -257,7 +257,7 @@ def delete_files(files, dry_run=False):
                 logger.error(f"Ошибка при удалении {file}: {e}")
 
 
-def delete_ls_tasks(dry_run=False):
+def delete_ls_tasks(dry_run=False, save_annotated=True):
     page = 1
     page_size = 100
     all_tasks = []
@@ -309,7 +309,7 @@ def delete_ls_tasks(dry_run=False):
     for task in all_tasks:
         task_id = task.get("id")
         anns = task.get("total_annotations", 0)
-        if not anns:
+        if not save_annotated and not anns:
             logger.debug(f"[LS DEBUG] Задача {task_id} — нет аннотаций")
             to_delete.append(task_id)
             continue
