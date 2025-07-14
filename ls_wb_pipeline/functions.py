@@ -94,10 +94,15 @@ def remount_webdav(from_systemd=False):
 
     try:
         os.makedirs(MOUNTED_PATH, exist_ok=True)
-        args = ["rclone", "mount", WEBDAV_REMOTE, MOUNTED_PATH, "--daemon", "--no-modtime"]
+        args = ["rclone", "mount", WEBDAV_REMOTE, MOUNTED_PATH, "--no-modtime"]
         if not from_systemd:
-            args.append("--daemon")
-
+            args.append("--daemon", )
+        else:
+            args += [
+                "--vfs-cache-mode", "writes",
+                "--dir-cache-time", "5s",
+                "--poll-interval", "5s"
+            ]
         subprocess.run(
             args,
             check=True
