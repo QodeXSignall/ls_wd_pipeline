@@ -69,3 +69,4 @@ def delete_dataset_service():
 def clean_downloaded_list():
     with open(settings.DOWNLOAD_HISTORY_FILE, "w") as f:
         json.dump([], f)
+    return {"status": "cleaned", "path": settings.DOWNLOAD_HISTORY_FILE}
