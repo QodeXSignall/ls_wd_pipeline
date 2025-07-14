@@ -1,7 +1,6 @@
 from urllib.parse import urlparse, parse_qs
 from ls_wb_pipeline.logger import logger
 from ls_wb_pipeline.settings import *
-from ls_wb_pipeline import settings
 from webdav3.client import Client
 from itertools import islice
 from pathlib import Path
@@ -200,14 +199,14 @@ def count_remote_frames(webdav_client):
 def clean_cloud_files_from_path(json_path, dry_run=False):
     # Загрузка размеченных файлов
     with open(json_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    return clean_cloud_files_from_data(data, dry_run=dry_run)
+        tasks = json.load(f)
+    return clean_cloud_files_from_tasks(tasks, dry_run=dry_run)
 
-def clean_cloud_files_from_data(data, dry_run=False):
+def clean_cloud_files_from_tasks(tasks, dry_run=False):
     marked_files = set()
     unmarked_files = set()
 
-    for task in data:
+    for task in tasks:
         try:
             image_url = task["data"]["image"]
             parsed = urlparse(image_url)
@@ -222,7 +221,7 @@ def clean_cloud_files_from_data(data, dry_run=False):
             logger.warning(f"[EXC] Ошибка при парсинге имени файла: {e}")
             continue
 
-    files_to_delete = [f for f in data if f not in unmarked_files]
+    files_to_delete = [f for f in tasks if f not in unmarked_files]
     delete_files(files_to_delete, dry_run=dry_run)
     logger.info(f"{'[DRY RUN] ' if dry_run else ''}Удаление завершено. Удалено: {len(files_to_delete)}, "
                 f"оставлено: {len(marked_files)}")
