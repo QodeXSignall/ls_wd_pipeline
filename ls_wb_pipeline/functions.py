@@ -1,10 +1,10 @@
 from urllib.parse import urlparse, parse_qs
 from ls_wb_pipeline.logger import logger
 from ls_wb_pipeline.settings import *
-from email.quoprimime import unquote
 from webdav3.client import Client
 from itertools import islice
 from pathlib import Path
+import urllib.parse
 import subprocess
 import requests
 import tempfile
@@ -13,6 +13,8 @@ import json
 import time
 import os
 import cv2
+import re
+
 
 
 
@@ -479,11 +481,22 @@ def with_retries(func, max_attempts=3, delay=1.0, jitter=0.5, exceptions=(Except
             logger.warning(f"{log_prefix}Ошибка (попытка {attempt}/{max_attempts}): {e}. Повтор через {delay} сек.")
             time.sleep(delay + random.uniform(0, jitter))
 
-def parse_video_name(video_name: str) -> str:
-    video_name = video_name.split("_")
-    reg_folder = video_name[0]
-    other = video_name[1]
-    return reg_folder, other
+
+def parse_video_name(video_name: str):
+    pattern = re.compile(
+        r"(?P<reg_id>[A-Z0-9]+)_(?P<year>\d{4})\.(?P<month>\d{1,2})\.(?P<day>\d{1,2}) "
+        r"(?P<start_time>\d{1,2}\.\d{1,2}\.\d{1,2})-(?P<end_time>\d{1,2}\.\d{1,2}\.\d{1,2})"
+        r"\.(?P<video_format>\w+)"
+    )
+    match = pattern.match(video_name)
+    if not match:
+        raise ValueError(f"Invalid video name: {video_name}")
+
+    reg_id = match.group("reg_id")
+    day = f"{match.group('year')}.{match.group('month')}.{match.group('day')}"
+    filename = video_name.replace(".mp4", "") if video_name.endswith(".mp4") else video_name
+
+    return reg_id, day, filename
 
 
 def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float = None, concrete_video_name: str = None):
@@ -493,12 +506,10 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
     # Ускоряем поиск видео, распарсив название и выполняя поиск в конкретной папке
     if concrete_video_name:
         try:
-            reg_folder, other = parse_video_name(concrete_video_name)
-            remote_dir = f"{BASE_REMOTE_DIR}/{reg_folder}/{other.replace('.mp4', '') if other.endswith('.mp4') else other}"
+            reg_id, day, filename = parse_video_name(concrete_video_name)
+            remote_dir = f"{BASE_REMOTE_DIR}/{reg_id}/{day}/{filename}"
         except Exception as e:
-            return {
-                "error": f"Не удалось распарсить название видео {concrete_video_name}: {e}. "
-                         f"Убедитесь, что он в формате REGID_Y.m.d H.M.S-H.M.S.mp4"}
+            return {"error": f"Ошибка разбора имени: {concrete_video_name} — {e}"}
     else:
         remote_dir = BASE_REMOTE_DIR
 
