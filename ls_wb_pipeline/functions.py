@@ -495,7 +495,6 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
         try:
             reg_folder, other = parse_video_name(concrete_video_name)
             remote_dir = f"{BASE_REMOTE_DIR}/{reg_folder}/{other.replace('.mp4', '') if other.endswith('.mp4') else other}"
-            remote_dir = unquote(remote_dir)
         except Exception as e:
             return {
                 "error": f"Не удалось распарсить название видео {concrete_video_name}: {e}. "
