@@ -254,7 +254,7 @@ def delete_files(files, dry_run=False):
             logger.info(f"[DRY RUN] Будет удалено: {file}")
         else:
             try:
-                os.remove(os.path.join(MOUNTED_PATH, file))
+                os.remove(os.path.join("/mnt", file))
             except Exception as e:
                 logger.error(f"Ошибка при удалении {file}: {e}")
 
