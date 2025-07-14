@@ -1,4 +1,7 @@
 from urllib.parse import urlparse, parse_qs
+
+from scipy.special.cython_special import btdtria
+
 from ls_wb_pipeline.logger import logger
 from ls_wb_pipeline.settings import *
 from webdav3.client import Client
@@ -478,12 +481,31 @@ def with_retries(func, max_attempts=3, delay=1.0, jitter=0.5, exceptions=(Except
             logger.warning(f"{log_prefix}Ошибка (попытка {attempt}/{max_attempts}): {e}. Повтор через {delay} сек.")
             time.sleep(delay + random.uniform(0, jitter))
 
+def parse_video_name(video_name: str) -> str:
+    video_name = video_name.split("_")
+    reg_folder = video_name[0]
+    video_name = video_name[1].split(" ")
+    day = video_name[0]
+    timestamp = video_name[1]
+    return reg_folder, day, timestamp
+
 
 def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float = None, concrete_video_name: str = None):
     remount_webdav()
     os.makedirs(LOCAL_VIDEO_DIR, exist_ok=True)
 
-    video_generator = iter_video_files(BASE_REMOTE_DIR)
+    # Ускоряем поиск видео, распарсив название и выполняя поиск в конкретной папке
+    if concrete_video_name:
+        try:
+            reg_folder, day, timestamp = parse_video_name(concrete_video_name)
+        except:
+            return {
+                "error": f"Не удалось распарсить название видео {concrete_video_name}. Убедитесь, что он в формате REGID_Y.m.d H.M.S-H.M.S.mp4"}
+        remote_dir = f"{BASE_REMOTE_DIR}/{reg_folder}/day"
+    else:
+        remote_dir = BASE_REMOTE_DIR
+
+    video_generator = iter_video_files(remote_dir)
     result_dict = {"total_frames": 0, "vid_process_results": []}
     while True:
         # Проверяем количество кадров перед началом обработки видео
@@ -550,6 +572,8 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
             os.rename(temp_path, local_path)
             downloaded_videos.add(video)
             logger.info(f"Скачано {video} в {local_path}")
+            if concrete_video_name:
+                break
         except Exception as e:
             logger.error(f"Ошибка при скачивании {video}: {e}")
             continue
