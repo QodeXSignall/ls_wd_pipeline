@@ -214,14 +214,14 @@ def clean_cloud_files_from_tasks(tasks, dry_run=False):
             image_path = query.get("d", [""])[0]
             image_name = os.path.basename(image_path)
             if check_if_ann(task):
-                marked_files.add(image_name)
+                marked_files.add(image_path)
             else:
-                unmarked_files.add(image_name)
+                unmarked_files.add(image_path)
         except Exception as e:
             logger.warning(f"[EXC] Ошибка при парсинге имени файла: {e}")
             continue
 
-    files_to_delete = [f for f in tasks if f not in unmarked_files]
+    files_to_delete = [f for f in marked_files if f not in unmarked_files]
     delete_files(files_to_delete, dry_run=dry_run)
     logger.info(f"{'[DRY RUN] ' if dry_run else ''}Удаление завершено. Удалено: {len(files_to_delete)}, "
                 f"оставлено: {len(marked_files)}")
