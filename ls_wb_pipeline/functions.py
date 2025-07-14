@@ -597,8 +597,6 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
             os.rename(temp_path, local_path)
             downloaded_videos.add(video)
             logger.info(f"Скачано {video} в {local_path}")
-            if concrete_video_name:
-                break
         except Exception as e:
             logger.error(f"Ошибка при скачивании {video}: {e}")
             continue
@@ -612,6 +610,8 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
             logger.warning(f"Не удалось обработать видео: {video_path}")
         result_dict["vid_process_results"].append({"video_path": video_path, "frames": frames, "success": success})
         save_download_history()
+        if concrete_video_name:
+            break
     return result_dict
 
 
