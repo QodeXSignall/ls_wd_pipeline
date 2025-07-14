@@ -209,17 +209,15 @@ def delete_files(files, dry_run=False):
                 logger.error(f"Ошибка при удалении {file}: {e}")
 
 
-def delete_ls_tasks(dry_run=False, save_annotated=True):
+def get_all_tasks():
     page = 1
     page_size = 100
     all_tasks = []
     seen_ids = set()
-    saved = 0
 
     logger.info("[LS] Загружаем все задачи с пагинацией (по страницам)...")
 
     while True:
-
         url = f"{LABELSTUDIO_API_URL}/tasks?project={PROJECT_ID}&page={page}&page_size={page_size}"
 
         logger.debug(f"[DEBUG] URL: {url}")
@@ -256,9 +254,16 @@ def delete_ls_tasks(dry_run=False, save_annotated=True):
         page += 1
 
     logger.info(f"[LS] Уникальных задач: {len(all_tasks)}")
+    return all_tasks
+
+
+def delete_ls_tasks(tasks, dry_run=False, save_annotated=True):
+    saved = 0
+
+    logger.info("[LS] Загружаем все задачи с пагинацией (по страницам)...")
 
     to_delete = []
-    for task in all_tasks:
+    for task in tasks:
         task_id = task.get("id")
         anns = task.get("total_annotations", 0)
         if not save_annotated or not anns:
@@ -278,11 +283,11 @@ def delete_ls_tasks(dry_run=False, save_annotated=True):
             else:
                 logger.error(f"[ERR] Не удалось удалить задачу {task_id} — {r.status_code}: {r.text}")
     try:
-        saved = len(all_tasks) - len(to_delete)
+        saved = len(tasks) - len(to_delete)
     except:
         pass
     logger.info(f"{'[DRY RUN] ' if dry_run else ''}Удаление завершено. Всего удалено: {len(to_delete)}. Сохранено: {saved}")
-    return all_tasks, to_delete, saved
+    return to_delete, saved
 
 
 

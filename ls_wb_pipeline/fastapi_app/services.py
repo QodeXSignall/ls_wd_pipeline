@@ -12,12 +12,10 @@ def analyze_dataset_service():
     return {"status": "analyzed", "result": result}
 
 
-def cleanup_frames_tasks(json_data: bytes = None, dry_run:bool = False, save_annotated: bool = True):
-    all_tasks, deleted_tasks, saved_amount = functions.delete_ls_tasks(dry_run=dry_run, save_annotated=save_annotated)
-    if json_data:
-        all_tasks = json.loads(json_data)
+def cleanup_frames_tasks(tasks, dry_run:bool = False, save_annotated: bool = True):
+    deleted_tasks, saved_amount = functions.delete_ls_tasks(tasks=tasks, dry_run=dry_run, save_annotated=save_annotated)
     deleted_files_report = functions.clean_cloud_files_from_tasks(
-        tasks=all_tasks, dry_run=dry_run, save_annotated=save_annotated)
+        tasks=tasks, dry_run=dry_run, save_annotated=save_annotated)
     return {"status": "cleaned", "result":
         {"files": {"deleted_amount": deleted_files_report["deleted_amount"],
                    "saved_amount": deleted_files_report["saved"],
@@ -26,14 +24,13 @@ def cleanup_frames_tasks(json_data: bytes = None, dry_run:bool = False, save_ann
                     "saved": saved_amount},
             "dry_run": dry_run}
 
-def enrich_dataset_and_cleanup(json_bytes: bytes, dry_run: bool = True, train_ratio=0.8, test_ratio=0.1, val_ratio=0.1):
+def enrich_dataset_and_cleanup(dry_run: bool = True, train_ratio=0.8, test_ratio=0.1, val_ratio=0.1):
     before = analyze_dataset_service()
 
-    # Читаем JSON из байтов
-    json_data = json.load(io.BytesIO(json_bytes))
-    build_dataset.main_from_data(json_data, train_ratio=train_ratio, test_ratio=test_ratio, val_ratio=val_ratio)  # нужна будет версия main, принимающая уже загруженные данные
+    all_tasks = functions.get_all_tasks()
+    build_dataset.main_from_tasks(all_tasks, train_ratio=train_ratio, test_ratio=test_ratio, val_ratio=val_ratio)  # нужна будет версия main, принимающая уже загруженные данные
 
-    cleanup_frames_tasks(json_data=json_data, dry_run=dry_run)
+    cleanup_frames_tasks(all_tasks, dry_run=dry_run)
 
     after = analyze_dataset_service()
     return {

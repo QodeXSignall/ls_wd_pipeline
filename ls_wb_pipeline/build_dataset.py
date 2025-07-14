@@ -9,7 +9,7 @@ import os
 
 # ==== НАСТРОЙКИ (можно менять внутри скрипта) ====
 
-def main_from_data(data, train_ratio=0.8, test_ratio=0.1, val_ratio=0.1):
+def main_from_tasks(all_tasks, train_ratio=0.8, test_ratio=0.1, val_ratio=0.1):
     # Загрузка уже размеченных изображений по .txt
     existing_labels = set()
     for split in ("train", "val", "test"):
@@ -33,7 +33,7 @@ def main_from_data(data, train_ratio=0.8, test_ratio=0.1, val_ratio=0.1):
     full_summary = Counter()
 
     # Первый проход — для полной статистики
-    for task in data:
+    for task in all_tasks:
         anns = task.get("annotations")
         if not anns or not isinstance(anns, list):
             continue
@@ -48,7 +48,7 @@ def main_from_data(data, train_ratio=0.8, test_ratio=0.1, val_ratio=0.1):
             continue
 
     # Второй проход — для новых изображений
-    for task in data:
+    for task in all_tasks:
         anns = task.get("annotations")
         if not anns or not isinstance(anns, list):
             continue
@@ -147,7 +147,7 @@ def main_from_data(data, train_ratio=0.8, test_ratio=0.1, val_ratio=0.1):
 def main_from_path(json_path):
     with open(json_path, "r", encoding="utf-8") as f:
         data = json.load(f)
-    main_from_data(data)
+    main_from_tasks(data)
 
 
 def analyze_dataset(dataset_path=settings.DATASET_PATH):
