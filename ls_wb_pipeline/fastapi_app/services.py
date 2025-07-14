@@ -1,6 +1,5 @@
 from ls_wb_pipeline import functions, build_dataset
 from ls_wb_pipeline import settings
-import configparser
 import tempfile
 import shutil
 import json
@@ -13,7 +12,7 @@ def analyze_dataset_service():
     return {"status": "analyzed", "result": result}
 
 
-def build_dataset_and_cleanup(json_bytes: bytes, dry_run: bool = True, train_ratio=0.8, test_ratio=0.1, val_ratio=0.1):
+def enrich_dataset_and_cleanup(json_bytes: bytes, dry_run: bool = True, train_ratio=0.8, test_ratio=0.1, val_ratio=0.1):
     before = analyze_dataset_service()
 
     # Читаем JSON из байтов
@@ -52,6 +51,6 @@ def get_zip_dataset():
 def delete_dataset_service():
     if os.path.exists(settings.DATASET_PATH):
         shutil.rmtree(settings.DATASET_PATH)
-        return {"status": "deleted", "path": settings.DATASET_PATH}
+        return {"status": "Датасет успешно удален", "path": settings.DATASET_PATH}
     else:
-        return {"status": "not found", "path": settings.DATASET_PATH}
+        return {"status": "Датасет не найден", "path": settings.DATASET_PATH}
