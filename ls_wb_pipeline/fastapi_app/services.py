@@ -16,7 +16,9 @@ def cleanup_frames_tasks(json_data: bytes = None, dry_run:bool = False):
     all_tasks, deleted, saved = functions.delete_ls_tasks(dry_run=dry_run)
     if not json_data:
         all_tasks = all_tasks
-    deleted_files_report = functions.clean_cloud_files_from_tasks(tasks=json_data, dry_run=dry_run)
+    else:
+        all_tasks = json.loads(json_data)
+    deleted_files_report = functions.clean_cloud_files_from_tasks(tasks=all_tasks, dry_run=dry_run)
     return {"status": "cleaned", "result":
         {"files": deleted_files_report,
          "tasks": {"deleted": len(deleted)},
