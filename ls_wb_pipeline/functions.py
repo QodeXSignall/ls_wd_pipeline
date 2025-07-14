@@ -464,6 +464,7 @@ def main_process_new_frames(max_frames=3000, only_cargo_type: str = None, fps: f
     result = process_video_loop(max_frames=max_frames, only_cargo_type=only_cargo_type, fps=fps, concrete_video_name=video_name)
     if not is_mounted():
         remount_webdav()
+    time.sleep(3)
     sync_label_studio_storage()
     cleanup_videos()
     result["status"] = "frames processed"
