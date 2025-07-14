@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, Query
+from fastapi import APIRouter, Query
 from fastapi.responses import FileResponse
 from ls_wb_pipeline import settings
 from ls_wb_pipeline.fastapi_app import services
@@ -8,14 +8,12 @@ router = APIRouter()
 
 @router.post("/enrich-dataset", tags=["dataset"])
 def enrich_dataset(
-    file: UploadFile = File(...),
     dry_run: bool = Query(False, description="Построить датасет без удаления неразмеченных кадров"),
     train_ratio: float = Query(0.8, description="Тренировочная часть"),
     val_ratio: float = Query(0.1, description="Валидационная часть"),
     test_ratio: float = Query(0.1, description="Тестовая часть")):
-    contents = file.file.read()
     return services.enrich_dataset_and_cleanup(
-        contents, dry_run=dry_run, train_ratio=train_ratio, test_ratio=test_ratio, val_ratio=val_ratio)
+        dry_run=dry_run, train_ratio=train_ratio, test_ratio=test_ratio, val_ratio=val_ratio)
 
 @router.get("/analyze-dataset", tags=["dataset"])
 def analyze_dataset():
