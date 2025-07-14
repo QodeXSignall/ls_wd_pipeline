@@ -234,7 +234,7 @@ def check_if_ann(task):
     first_ann = anns[0]
     results = first_ann.get("result", [])
     if not results:
-        return
+        return False
     return True
 
 def delete_all_cloud_files(dry_run=False):
