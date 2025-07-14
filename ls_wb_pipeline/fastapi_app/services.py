@@ -65,3 +65,7 @@ def delete_dataset_service():
         return {"status": "Датасет успешно удален", "path": settings.DATASET_PATH}
     else:
         return {"status": "Датасет не найден", "path": settings.DATASET_PATH}
+
+def clean_downloaded_list():
+    with open(settings.DOWNLOAD_HISTORY_FILE, "w") as f:
+        json.dump([], f)
