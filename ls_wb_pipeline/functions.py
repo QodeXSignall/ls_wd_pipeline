@@ -482,6 +482,7 @@ def with_retries(func, max_attempts=3, delay=1.0, jitter=0.5, exceptions=(Except
 
 
 def parse_video_name(video_name: str):
+    """Парсит имя файла и возвращает (reg_id, day, base_name)."""
     pattern = re.compile(
         r"(?P<reg_id>[A-Z0-9]+)_(?P<year>\d{4})\.(?P<month>\d{1,2})\.(?P<day>\d{1,2}) "
         r"(?P<start_time>\d{1,2}\.\d{1,2}\.\d{1,2})-(?P<end_time>\d{1,2}\.\d{1,2}\.\d{1,2})"
@@ -489,14 +490,31 @@ def parse_video_name(video_name: str):
     )
     match = pattern.match(video_name)
     if not match:
-        raise ValueError(f"Invalid video name: {video_name}")
+        raise ValueError(f"Неверный формат имени: {video_name}")
 
     reg_id = match.group("reg_id")
     day = f"{match.group('year')}.{match.group('month')}.{match.group('day')}"
-    filename = video_name.replace(".mp4", "") if video_name.endswith(".mp4" or ".avi") else video_name
+    base_name = video_name.rsplit('.', 1)[0]
+    return reg_id, day, base_name
 
-    return reg_id, day, filename
+def resolve_video_path(concrete_video_name: str, base_remote_dir: str, client) -> str:
+    """
+    Возвращает путь к .mp4-файлу по имени видео.
+    Пример: concrete_video_name = "K630AX702_2025.5.21 8.54.11-8.55.34.mp4"
+    """
+    reg_id, day, base_name = parse_video_name(concrete_video_name)
+    remote_dir = f"{base_remote_dir}/{reg_id}/{day}/{base_name}"
 
+    try:
+        items = client.list(remote_dir)
+    except Exception as e:
+        raise FileNotFoundError(f"Не удалось открыть папку: {remote_dir}. Ошибка: {e}")
+
+    mp4_files = [f for f in items if f.endswith(".mp4")]
+    if not mp4_files:
+        raise FileNotFoundError(f"В папке {remote_dir} нет .mp4 файлов")
+
+    return f"{remote_dir}/{mp4_files[0]}"
 
 def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float = None, concrete_video_name: str = None):
     remount_webdav()
@@ -505,11 +523,10 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
     # Ускоряем поиск видео, распарсив название и выполняя поиск в конкретной папке
     if concrete_video_name:
         try:
-            reg_id, day, filename = parse_video_name(concrete_video_name)
-            remote_dir = f"{BASE_REMOTE_DIR}/{reg_id}/{day}/{filename}"
-            video_generator = iter([f"{remote_dir}.mp4"])  # Обрабатываем только одно видео
+            resolved_path = resolve_video_path(concrete_video_name, BASE_REMOTE_DIR, client)
+            video_generator = iter([resolved_path])  # Обрабатываем конкретное видео
         except Exception as e:
-            return {"error": f"Ошибка разбора имени: {concrete_video_name} — {e}"}
+            return {"error": f"Ошибка при разрешении пути к видео {concrete_video_name}: {e}"}
     else:
         remote_dir = BASE_REMOTE_DIR
         video_generator = iter_video_files(remote_dir)
