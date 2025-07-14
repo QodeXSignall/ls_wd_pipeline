@@ -226,7 +226,7 @@ def clean_cloud_files_from_tasks(tasks, dry_run=False, save_annotated=True):
     delete_files(files_to_delete, dry_run=dry_run)
     logger.info(f"{'[DRY RUN] ' if dry_run else ''}Удаление завершено. Удалено: {len(files_to_delete)}, "
                 f"оставлено: {len(marked_files)}")
-    return {"deleted_amount": len(files_to_delete), "saved": len(marked_files), "deteled": files_to_delete}
+    return {"deleted_amount": len(files_to_delete), "saved": len(marked_files), "deleted": files_to_delete}
 
 def check_if_ann(task):
     anns = task.get("annotations")
