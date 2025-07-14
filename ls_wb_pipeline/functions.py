@@ -80,7 +80,7 @@ def mount_webdav(from_systemd=False):
         logger.error(f"Ошибка при монтировании WebDAV: {e}")
 
 
-def remount_webdav():
+def remount_webdav(from_systemd=False):
     """Пытается перемонтировать WebDAV, если он отключился."""
     if is_mounted():
         return
@@ -92,8 +92,12 @@ def remount_webdav():
 
     try:
         os.makedirs(MOUNTED_PATH, exist_ok=True)
+        args = ["rclone", "mount", WEBDAV_REMOTE, MOUNTED_PATH, "--daemon", "--no-modtime"]
+        if not from_systemd:
+            args.append("--daemon")
+
         subprocess.run(
-            ["rclone", "mount", WEBDAV_REMOTE, MOUNTED_PATH, "--daemon", "--no-modtime"],
+            args,
             check=True
         )
         time.sleep(3)
