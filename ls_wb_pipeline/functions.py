@@ -1,12 +1,11 @@
-from urllib.parse import urlparse, parse_qs
-
 from scipy.special.cython_special import btdtria
-
+from urllib.parse import urlparse, parse_qs
 from ls_wb_pipeline.logger import logger
 from ls_wb_pipeline.settings import *
 from webdav3.client import Client
 from itertools import islice
 from pathlib import Path
+import urllib.parse
 import subprocess
 import requests
 import tempfile
@@ -489,6 +488,7 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
     if concrete_video_name:
         try:
             remote_dir = f"{BASE_REMOTE_DIR}/{concrete_video_name.replace('.mp4', '') if concrete_video_name.endswith('.mp4') else concrete_video_name}"
+            remote_dir = urllib.parse.unquote(remote_dir)
         except:
             return {
                 "error": f"Не удалось распарсить название видео {concrete_video_name}. Убедитесь, что он в формате REGID_Y.m.d H.M.S-H.M.S.mp4"}
