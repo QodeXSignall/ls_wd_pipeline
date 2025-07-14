@@ -456,9 +456,9 @@ def delete_blacklisted_files():
 '''
 
 
-def main_process_new_frames(max_frames=3000, only_cargo_type: str = None, fps: float = None):
+def main_process_new_frames(max_frames=3000, only_cargo_type: str = None, fps: float = None, video_name: str = None):
     logger.info("\n\U0001f504 Запущен основной цикл создания фреймов")
-    result = process_video_loop(max_frames=max_frames, only_cargo_type=only_cargo_type, fps=fps)
+    result = process_video_loop(max_frames=max_frames, only_cargo_type=only_cargo_type, fps=fps, concrete_video_name=video_name)
     remount_webdav()
     time.sleep(1)
     mount_webdav()
@@ -480,7 +480,7 @@ def with_retries(func, max_attempts=3, delay=1.0, jitter=0.5, exceptions=(Except
             time.sleep(delay + random.uniform(0, jitter))
 
 
-def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float = None):
+def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float = None, concrete_video_name: str = None):
     remount_webdav()
     os.makedirs(LOCAL_VIDEO_DIR, exist_ok=True)
 
@@ -507,7 +507,11 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
             logger.info("Все видео обработаны")
             return {"error": "Все видео обработаны"}
 
-        if video in downloaded_videos:
+        current_video_name = os.path.basename(video)
+        if concrete_video_name and concrete_video_name != current_video_name:
+            continue
+
+        if video in downloaded_videos and not concrete_video_name:
             logger.debug(f"Пропущено {video}, уже скачано.")
             continue
 
@@ -537,7 +541,7 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
             logger.debug(f"Тип груза - {cargo_type}. Но качаем только - {only_cargo_type}, пропуск...")
             continue
 
-        local_path = os.path.join(LOCAL_VIDEO_DIR, os.path.basename(video))
+        local_path = os.path.join(LOCAL_VIDEO_DIR, current_video_name)
         logger.info(f"Скачивание {video}")
         try:
             temp_path = local_path + ".part"

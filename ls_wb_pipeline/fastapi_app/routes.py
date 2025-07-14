@@ -43,8 +43,9 @@ def load_frames(max_frames: int = Query(300, description="Максимум ка�
                 fps: float = Query(default=None,
                                  description=f"Количество кадров в секунду. "
                                              f"По умолчанию, {settings.FRAMES_PER_SECOND_EURO}fps euro, "
-                                             f"{settings.FRAMES_PER_SECOND_BUNKER}fps bunker")):
-    return services.load_new_frames(max_frames=max_frames, only_cargo_type=only_cargo_type, fps=fps)
+                                             f"{settings.FRAMES_PER_SECOND_BUNKER}fps bunker"),
+                video_name: str = Query(default=None, description="Скачать конкретное видео (можно скачать уже скачанное ранее)")):
+    return services.load_new_frames(max_frames=max_frames, only_cargo_type=only_cargo_type, fps=fps, video_name=video_name)
 
 @router.delete("/del-frames", tags=["frames"])
 def delete_frames(
