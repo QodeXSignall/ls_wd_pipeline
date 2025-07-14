@@ -1,10 +1,9 @@
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, unquote
 from ls_wb_pipeline.logger import logger
 from ls_wb_pipeline.settings import *
 from webdav3.client import Client
 from itertools import islice
 from pathlib import Path
-import urllib.parse
 import subprocess
 import requests
 import tempfile
@@ -494,7 +493,7 @@ def parse_video_name(video_name: str):
 
     reg_id = match.group("reg_id")
     day = f"{match.group('year')}.{match.group('month')}.{match.group('day')}"
-    filename = video_name.replace(".mp4", "") if video_name.endswith(".mp4") else video_name
+    filename = video_name.replace(".mp4", "") if video_name.endswith(".mp4" or ".avi") else video_name
 
     return reg_id, day, filename
 
@@ -508,10 +507,12 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
         try:
             reg_id, day, filename = parse_video_name(concrete_video_name)
             remote_dir = f"{BASE_REMOTE_DIR}/{reg_id}/{day}/{filename}"
+            video_generator = iter([f"{remote_dir}.mp4"])  # Обрабатываем только одно видео
         except Exception as e:
             return {"error": f"Ошибка разбора имени: {concrete_video_name} — {e}"}
     else:
         remote_dir = BASE_REMOTE_DIR
+        video_generator = iter_video_files(remote_dir)
 
     video_generator = iter_video_files(remote_dir)
     result_dict = {"total_frames": 0, "vid_process_results": []}
