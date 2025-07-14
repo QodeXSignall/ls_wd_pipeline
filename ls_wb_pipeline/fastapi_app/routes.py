@@ -1,17 +1,9 @@
 from fastapi import APIRouter, UploadFile, File, Query
 from fastapi.responses import FileResponse
 from ls_wb_pipeline import settings
-from ls_wb_pipeline.fastapi_app.services import (
-    analyze_dataset_service,
-    enrich_dataset_and_cleanup,
-    get_zip_dataset,
-    load_new_frames,
-    delete_dataset_service
-)
+from ls_wb_pipeline.fastapi_app import services
 
 router = APIRouter()
-
-
 
 
 @router.post("/enrich-dataset", tags=["dataset"])
@@ -22,17 +14,17 @@ def enrich_dataset(
     val_ratio: float = Query(0.1, description="Валидационная часть"),
     test_ratio: float = Query(0.1, description="Тестовая часть")):
     contents = file.file.read()
-    return enrich_dataset_and_cleanup(
+    return services.enrich_dataset_and_cleanup(
         contents, dry_run=dry_run, train_ratio=train_ratio, test_ratio=test_ratio, val_ratio=val_ratio)
 
 @router.get("/analyze-dataset", tags=["dataset"])
 def analyze_dataset():
-    return analyze_dataset_service()
+    return services.analyze_dataset_service()
 
 @router.get("/download-dataset", tags=["dataset"])
 def download_dataset():
     try:
-        archive_path = get_zip_dataset()
+        archive_path = services.get_zip_dataset()
         return FileResponse(
             archive_path,
             media_type="application/zip",
@@ -43,7 +35,7 @@ def download_dataset():
 
 @router.delete("/del-dataset", tags=["dataset"])
 def delete_dataset():
-    return delete_dataset_service()
+    return services.delete_dataset_service()
 
 @router.post("/load-frames", tags=["frames"])
 def load_frames(max_frames: int = Query(300, description="Максимум кадров"),
@@ -52,4 +44,9 @@ def load_frames(max_frames: int = Query(300, description="Максимум ка�
                                  description=f"Количество кадров в секунду. "
                                              f"По умолчанию, {settings.FRAMES_PER_SECOND_EURO}fps euro, "
                                              f"{settings.FRAMES_PER_SECOND_BUNKER}fps bunker")):
-    return load_new_frames(max_frames=max_frames, only_cargo_type=only_cargo_type, fps=fps)
+    return services.load_new_frames(max_frames=max_frames, only_cargo_type=only_cargo_type, fps=fps)
+
+@router.delete("/del-frames", tags=["frames"])
+def delete_frames(
+        dry_run: bool = Query(False, description="Имитация удаления")):
+    return services.cleanup_frames_tasks(dry_run=dry_run)

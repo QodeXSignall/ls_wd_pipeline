@@ -201,54 +201,62 @@ def clean_cloud_files_from_path(json_path, dry_run=False):
     # Загрузка размеченных файлов
     with open(json_path, "r", encoding="utf-8") as f:
         data = json.load(f)
-    clean_cloud_files_from_data(data, dry_run=dry_run)
+    return clean_cloud_files_from_data(data, dry_run=dry_run)
 
 def clean_cloud_files_from_data(data, dry_run=False):
-    # Загрузка размеченных файлов
     marked_files = set()
+    unmarked_files = set()
 
     for task in data:
-        anns = task.get("annotations")
-
-        if not anns or not isinstance(anns, list):
-            continue
-        first_ann = anns[0]
-        results = first_ann.get("result", [])
-        if not results:
-            continue
         try:
             image_url = task["data"]["image"]
             parsed = urlparse(image_url)
             query = parse_qs(parsed.query)
             image_path = query.get("d", [""])[0]
             image_name = os.path.basename(image_path)
-            marked_files.add(image_name)
+            if check_if_ann(task):
+                marked_files.add(image_name)
+            else:
+                unmarked_files.add(image_name)
         except Exception as e:
             logger.warning(f"[EXC] Ошибка при парсинге имени файла: {e}")
             continue
 
+    files_to_delete = [f for f in data if f not in unmarked_files]
+    delete_files(files_to_delete, dry_run=dry_run)
+    logger.info(f"{'[DRY RUN] ' if dry_run else ''}Удаление завершено. Удалено: {len(files_to_delete)}, "
+                f"оставлено: {len(marked_files)}")
+    return {"deleted": len(files_to_delete), "saved": len(marked_files)}
+
+def check_if_ann(task):
+    anns = task.get("annotations")
+    if not anns or not isinstance(anns, list):
+        return False
+    first_ann = anns[0]
+    results = first_ann.get("result", [])
+    if not results:
+        return
+    return True
+
+def delete_all_cloud_files(dry_run=False):
     try:
         actual_files = [f for f in os.listdir(MOUNTED_PATH) if f.lower().endswith(".jpg")]
     except Exception as e:
         logger.error(f"Не удалось прочитать директорию {MOUNTED_PATH}: {e}")
         return
+    delete_files(files=actual_files, dry_run=dry_run)
 
-    deleted, skipped = 0, 0
-    for file in actual_files:
-        if file not in marked_files:
-            if dry_run:
-                logger.info(f"[DRY RUN] Будет удалено: {file}")
-            else:
-                try:
-                    os.remove(os.path.join(MOUNTED_PATH, file))
-                    deleted += 1
-                except Exception as e:
-                    logger.error(f"Ошибка при удалении {file}: {e}")
+
+def delete_files(files, dry_run=False):
+    for file in files:
+        if dry_run:
+            logger.info(f"[DRY RUN] Будет удалено: {file}")
         else:
-            logger.debug(f"[KEEP] Размеченный файл: {file}")
-            skipped += 1
+            try:
+                os.remove(os.path.join(MOUNTED_PATH, file))
+            except Exception as e:
+                logger.error(f"Ошибка при удалении {file}: {e}")
 
-    logger.info(f"{'[DRY RUN] ' if dry_run else ''}Удаление завершено. Удалено: {deleted}, оставлено: {skipped}")
 
 def delete_ls_tasks(dry_run=False):
     page = 1
@@ -262,7 +270,6 @@ def delete_ls_tasks(dry_run=False):
     while True:
 
         url = f"{LABELSTUDIO_API_URL}/tasks?project={PROJECT_ID}&page={page}&page_size={page_size}"
-        #url = f"{LABELSTUDIO_API_URL}/tasks?project={PROJECT_ID}&page={page}&page_size={page_size}&include=annotations"
 
         logger.debug(f"[DEBUG] URL: {url}")
         r = requests.get(url, headers=HEADERS)
@@ -324,6 +331,7 @@ def delete_ls_tasks(dry_run=False):
     except:
         pass
     logger.info(f"{'[DRY RUN] ' if dry_run else ''}Удаление завершено. Всего удалено: {len(to_delete)}. Сохранено: {saved}")
+    return all_tasks, to_delete, saved
 
 
 

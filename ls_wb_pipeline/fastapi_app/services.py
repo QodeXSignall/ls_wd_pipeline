@@ -12,6 +12,16 @@ def analyze_dataset_service():
     return {"status": "analyzed", "result": result}
 
 
+def cleanup_frames_tasks(json_data: bytes = None, dry_run:bool = False):
+    all_tasks, deleted, saved = functions.delete_ls_tasks(dry_run=dry_run)
+    if not json_data:
+        json_data = all_tasks
+    deleted_files_report = functions.clean_cloud_files_from_data(json_data=json_data, dry_run=dry_run)
+    return {"status": "cleaned", "result":
+        {"files": deleted_files_report,
+         "tasks": {"deleted": len(deleted)},
+                    "saved": len(saved)}}
+
 def enrich_dataset_and_cleanup(json_bytes: bytes, dry_run: bool = True, train_ratio=0.8, test_ratio=0.1, val_ratio=0.1):
     before = analyze_dataset_service()
 
@@ -19,8 +29,7 @@ def enrich_dataset_and_cleanup(json_bytes: bytes, dry_run: bool = True, train_ra
     json_data = json.load(io.BytesIO(json_bytes))
     build_dataset.main_from_data(json_data, train_ratio=train_ratio, test_ratio=test_ratio, val_ratio=val_ratio)  # нужна будет версия main, принимающая уже загруженные данные
 
-    functions.clean_cloud_files_from_data(json_data, dry_run=dry_run)  # аналогично
-    functions.delete_ls_tasks(dry_run=dry_run)
+    cleanup_frames_tasks(json_data=json_data, dry_run=dry_run)
 
     after = analyze_dataset_service()
     return {
@@ -45,8 +54,6 @@ def get_zip_dataset():
     shutil.make_archive(archive_path[:-4], "zip", dataset_dir)
 
     return archive_path
-
-
 
 def delete_dataset_service():
     if os.path.exists(settings.DATASET_PATH):
