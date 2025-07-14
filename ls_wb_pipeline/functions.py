@@ -309,8 +309,8 @@ def delete_ls_tasks(dry_run=False, save_annotated=True):
     for task in all_tasks:
         task_id = task.get("id")
         anns = task.get("total_annotations", 0)
-        if not save_annotated and not anns:
-            logger.debug(f"[LS DEBUG] Задача {task_id} — нет аннотаций")
+        if not save_annotated or not anns:
+            logger.debug(f"[LS DEBUG] Задача {task_id} отмечена под удаление - {'нет аннотаций' if not anns else 'отключено сохранение аннотаций'}")
             to_delete.append(task_id)
             continue
 
