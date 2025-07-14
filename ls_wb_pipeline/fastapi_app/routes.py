@@ -14,7 +14,7 @@ router = APIRouter()
 
 
 @router.post("/build-dataset", tags=["dataset"])
-def build_dataset(
+def enrich_dataset(
     file: UploadFile = File(...),
     dry_run: bool = Query(False, description="Построить датасет без удаления неразмеченных кадров"),
     train_ratio: float = Query(0.8, description="Тренировочная часть"),
@@ -30,12 +30,15 @@ def analyze_dataset():
 
 @router.get("/download-dataset", tags=["dataset"])
 def download_dataset():
-    archive_path = get_zip_dataset()
-    return FileResponse(
-        archive_path,
-        media_type="application/zip",
-        filename="dataset_yolo.zip"
-    )
+    try:
+        archive_path = get_zip_dataset()
+        return FileResponse(
+            archive_path,
+            media_type="application/zip",
+            filename="dataset.zip"
+        )
+    except FileNotFoundError as e:
+        return {"error": str(e)}
 
 @router.delete("/del-dataset", tags=["dataset"])
 def delete_dataset():
