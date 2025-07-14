@@ -501,7 +501,7 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
         except:
             return {
                 "error": f"Не удалось распарсить название видео {concrete_video_name}. Убедитесь, что он в формате REGID_Y.m.d H.M.S-H.M.S.mp4"}
-        remote_dir = f"{BASE_REMOTE_DIR}/{reg_folder}/day"
+        remote_dir = f"{BASE_REMOTE_DIR}/{reg_folder}/{day}"
     else:
         remote_dir = BASE_REMOTE_DIR
 
