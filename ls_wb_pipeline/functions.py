@@ -134,7 +134,7 @@ def download_videos(max_frames=1000, max_files=1):
     for video in videos:
         if frame_count >= max_frames:
             logger.info(f"Достигнут лимит кадров ({frame_count}/{max_frames}). Остановка загрузки.")
-            break
+            return {"error": f"Невозможно скачать еще видео, достигнут лимит ({frame_count}/{max_frames})"}
         else:
             logger.info(f"В хранилище {frame_count}/{max_frames} кадров. Разрешается обработать еще")
         if video in downloaded_videos:
