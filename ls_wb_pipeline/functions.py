@@ -468,6 +468,8 @@ def main_process_new_frames(max_frames=3000, only_cargo_type: str = None, fps: f
     sync_label_studio_storage()
     cleanup_videos()
     result["status"] = "frames processed"
+    for item in client.list(REMOTE_FRAME_DIR):
+        client.check(item)
     return result
 
 
