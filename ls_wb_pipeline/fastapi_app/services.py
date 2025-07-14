@@ -21,7 +21,8 @@ def cleanup_frames_tasks(json_data: bytes = None, dry_run:bool = False):
         {"files": {"deleted": deleted_files_report["deleted"],
                    "saved": deleted_files_report["saved"]},
          "tasks": {"deleted": len(deleted_tasks)},
-                    "saved": saved_amount}}
+                    "saved": saved_amount},
+            "dry_run": dry_run}
 
 def enrich_dataset_and_cleanup(json_bytes: bytes, dry_run: bool = True, train_ratio=0.8, test_ratio=0.1, val_ratio=0.1):
     before = analyze_dataset_service()
