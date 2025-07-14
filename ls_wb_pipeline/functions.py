@@ -88,7 +88,7 @@ def remount_webdav(from_systemd=False):
     logger.warning("WebDAV отключен. Перемонтируем...")
 
     subprocess.run(["fusermount", "-uz", MOUNTED_PATH], check=False)
-    time.sleep(2)
+    time.sleep(3)
 
     try:
         os.makedirs(MOUNTED_PATH, exist_ok=True)
@@ -459,9 +459,8 @@ def delete_blacklisted_files():
 def main_process_new_frames(max_frames=3000, only_cargo_type: str = None, fps: float = None, video_name: str = None):
     logger.info("\n\U0001f504 Запущен основной цикл создания фреймов")
     result = process_video_loop(max_frames=max_frames, only_cargo_type=only_cargo_type, fps=fps, concrete_video_name=video_name)
-    remount_webdav()
-    time.sleep(1)
-    mount_webdav()
+    if not is_mounted():
+        remount_webdav()
     sync_label_studio_storage()
     cleanup_videos()
     result["status"] = "frames processed"
