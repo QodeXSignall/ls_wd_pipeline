@@ -616,6 +616,7 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
         if not success:
             logger.warning(f"Не удалось обработать видео: {video_path}")
         result_dict["vid_process_results"].append({"video_path": video_path, "frames": frames, "success": success})
+        result_dict["total_frames"] += int(frames)
         save_download_history()
         if concrete_video_name:
             break
