@@ -37,14 +37,13 @@ def load_new_frames(max_frames: int = 300, only_cargo_type: str = None):
 
 
 def get_zip_dataset():
-    dataset_dir = "./dataset_yolo"
-
+    dataset_dir = settings.DATASET_PATH
     if not os.path.exists(dataset_dir):
         return {"error": "Датасет ещё не создан."}
 
     # Создаём временный ZIP-файл
     tmp_dir = tempfile.mkdtemp()
-    archive_path = os.path.join(tmp_dir, "dataset_yolo.zip")
+    archive_path = os.path.join(tmp_dir, "dataset.zip")
     shutil.make_archive(archive_path.replace(".zip", ""), "zip", dataset_dir)
 
     return archive_path
