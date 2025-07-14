@@ -114,7 +114,7 @@ def remount_webdav(from_systemd=False):
 def download_videos(max_frames=1000, max_files=1):
     """Загружает видео из WebDAV по одному, пока не достигнет max_frames кадров."""
     remount_webdav()
-
+    downloaded = []
     os.makedirs(LOCAL_VIDEO_DIR, exist_ok=True)
 
     try:
@@ -148,6 +148,7 @@ def download_videos(max_frames=1000, max_files=1):
             client.download_sync(remote_path=video, local_path=temp_path)
             os.rename(temp_path, local_path)
             downloaded_videos.add(video)
+            downloaded.append(video)
             logger.info(f"Скачано {video} в {local_path}")
 
             # Обновляем количество кадров после каждого видео
@@ -532,7 +533,9 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
         video_generator = iter_video_files(remote_dir)
 
     result_dict = {"total_frames": 0, "vid_process_results": []}
+    downloaded = []
     while True:
+
         # Проверяем количество кадров перед началом обработки видео
         try:
             items = with_retries(lambda: client.list(REMOTE_FRAME_DIR), log_prefix="[WebDAV:list REMOTE_FRAME_DIR] ")
@@ -543,7 +546,10 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
 
         if frame_count >= max_frames:
             logger.info(f"\nДостигнут лимит кадров ({frame_count}/{max_frames}). Остановка загрузки.")
-            return {"error": f"Достигнут лимит кадров ({frame_count}/{max_frames})"}
+            if not downloaded_videos:
+                return {"error": f"Достигнут лимит кадров ({frame_count}/{max_frames})"}
+            else:
+                return result_dict
         #else:
         #   logger.info(f"\nВ данный момент в хранилище ({frame_count}/{max_frames}). Продолжаем обработку.")
 
@@ -597,6 +603,7 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
             os.rename(temp_path, local_path)
             downloaded_videos.add(video)
             logger.info(f"Скачано {video} в {local_path}")
+            downloaded.append(video)
         except Exception as e:
             logger.error(f"Ошибка при скачивании {video}: {e}")
             continue
