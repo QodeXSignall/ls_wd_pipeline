@@ -48,5 +48,7 @@ def load_frames(max_frames: int = Query(300, description="Максимум ка�
 
 @router.delete("/del-frames", tags=["frames"])
 def delete_frames(
-        dry_run: bool = Query(False, description="Имитация удаления")):
-    return services.cleanup_frames_tasks(dry_run=dry_run)
+        dry_run: bool = Query(False, description="Имитация удаления"),
+        save_annotated: bool = Query(default=True,
+                                     description="Сохранить уже анотированые кадры?"),):
+    return services.cleanup_frames_tasks(dry_run=dry_run, save_annotated=save_annotated)
