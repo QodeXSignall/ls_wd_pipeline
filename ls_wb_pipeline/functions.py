@@ -514,7 +514,6 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
         remote_dir = BASE_REMOTE_DIR
         video_generator = iter_video_files(remote_dir)
 
-    video_generator = iter_video_files(remote_dir)
     result_dict = {"total_frames": 0, "vid_process_results": []}
     while True:
         # Проверяем количество кадров перед началом обработки видео
