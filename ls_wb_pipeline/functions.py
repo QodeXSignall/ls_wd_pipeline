@@ -479,8 +479,7 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
         remote_dir = BASE_REMOTE_DIR
         video_generator = iter_video_files(remote_dir)
 
-    result_dict = {"total_frames": 0, "vid_process_results": []}
-    downloaded = []
+    result_dict = {"total_frames_downloaded": 0, "vid_process_results": [], "total_frames_in_storage": 0}
     while True:
 
         # Проверяем количество кадров перед началом обработки видео
@@ -563,7 +562,8 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
         if not success:
             logger.warning(f"Не удалось обработать видео: {video_path}")
         result_dict["vid_process_results"].append({"video_path": video_path, "frames": frames, "success": success})
-        result_dict["total_frames"] += int(frames)
+        result_dict["total_frames_downloaded"] += int(frames)
+        result_dict["total_frames_in_storage"] = frame_count
         save_download_history()
         if concrete_video_name:
             break
