@@ -484,7 +484,7 @@ def parse_video_name(video_name: str) -> str:
     video_name = video_name.split("_")
     reg_folder = video_name[0]
     other = video_name[1]
-    return
+    return reg_folder, other
 
 
 def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float = None, concrete_video_name: str = None):
