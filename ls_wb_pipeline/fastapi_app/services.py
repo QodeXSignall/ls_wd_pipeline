@@ -20,7 +20,8 @@ def cleanup_frames_tasks(json_data: bytes = None, dry_run:bool = False):
         all_tasks = json.loads(json_data)
     deleted_files_report = functions.clean_cloud_files_from_tasks(tasks=all_tasks, dry_run=dry_run)
     return {"status": "cleaned", "result":
-        {"files": deleted_files_report,
+        {"files": {"deleted": deleted_files_report["deleted"],
+                   "saved": deleted_files_report["saved"]},
          "tasks": {"deleted": len(deleted)},
                     "saved": len(saved)}}
 
