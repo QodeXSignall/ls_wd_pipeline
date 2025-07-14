@@ -407,8 +407,7 @@ def delete_blacklisted_files():
 def main_process_new_frames(max_frames=3000, only_cargo_type: str = None, fps: float = None, video_name: str = None):
     logger.info("\n\U0001f504 Запущен основной цикл создания фреймов")
     result = process_video_loop(max_frames=max_frames, only_cargo_type=only_cargo_type, fps=fps, concrete_video_name=video_name)
-    if not is_mounted():
-        remount_webdav()
+    remount_webdav()
     time.sleep(3)
     sync_label_studio_storage()
     cleanup_videos()
