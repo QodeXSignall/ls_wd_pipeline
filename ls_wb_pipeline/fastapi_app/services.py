@@ -31,8 +31,8 @@ def enrich_dataset_and_cleanup(json_bytes: bytes, dry_run: bool = True, train_ra
     }
 
 
-def load_new_frames(max_frames: int = 300, only_cargo_type: str = None):
-    return functions.main_process_new_frames(max_frames=max_frames, only_cargo_type=only_cargo_type)
+def load_new_frames(max_frames: int = 300, only_cargo_type: str = None, fps: float = None):
+    return functions.main_process_new_frames(max_frames=max_frames, only_cargo_type=only_cargo_type, fps=fps)
 
 
 def get_zip_dataset():

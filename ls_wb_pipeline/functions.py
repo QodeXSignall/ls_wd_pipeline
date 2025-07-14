@@ -1,6 +1,7 @@
 from urllib.parse import urlparse, parse_qs
 from ls_wb_pipeline.logger import logger
 from ls_wb_pipeline.settings import *
+from ls_wb_pipeline import settings
 from webdav3.client import Client
 from itertools import islice
 from pathlib import Path
@@ -326,11 +327,12 @@ def delete_ls_tasks(dry_run=False):
 
 
 
-def extract_frames(video_path, frames_per_second=FRAMES_PER_SECOND):
+def extract_frames(video_path, frames_per_second: float = None):
     """Разбивает видео на кадры и загружает в WebDAV с повторной попыткой при ошибках."""
     local_client = Client(WEBDAV_OPTIONS)
     cap = cv2.VideoCapture(video_path)
     existing_frames = count_remote_frames(webdav_client=local_client)
+    logger.info(f"Извлекаем кадры из {video_path}. FPS - {frames_per_second}")
     if existing_frames >= 5000:
         logger.warning(
             f"Превышен лимит кадров в хранилище ({existing_frames} >= 5000). Пропускаем видео {video_path}.")
@@ -448,9 +450,9 @@ def delete_blacklisted_files():
 '''
 
 
-def main_process_new_frames(max_frames=3000, only_cargo_type: str = None):
+def main_process_new_frames(max_frames=3000, only_cargo_type: str = None, fps: float = None):
     logger.info("\n\U0001f504 Запущен основной цикл создания фреймов")
-    result = process_video_loop(max_frames=max_frames, only_cargo_type=only_cargo_type)
+    result = process_video_loop(max_frames=max_frames, only_cargo_type=only_cargo_type, fps=fps)
     remount_webdav()
     time.sleep(1)
     mount_webdav()
@@ -472,7 +474,7 @@ def with_retries(func, max_attempts=3, delay=1.0, jitter=0.5, exceptions=(Except
             time.sleep(delay + random.uniform(0, jitter))
 
 
-def process_video_loop(max_frames=3000, only_cargo_type: str = None):
+def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float = None):
     remount_webdav()
     os.makedirs(LOCAL_VIDEO_DIR, exist_ok=True)
 
@@ -544,9 +546,9 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None):
 
         # Нарезаем кадры сразу после скачивания
         logger.info(f"Нарезка кадров из {local_path}")
-        success, video_path, frames = (extract_frames
-                               (local_path,
-                                frames_per_second=1 if cargo_type == "euro" else 0.25))
+        if not fps:
+            fps = set if cargo_type == "euro" else 0.25
+        success, video_path, frames = (extract_frames(local_path, frames_per_second=fps))
         if not success:
             logger.warning(f"Не удалось обработать видео: {video_path}")
         result_dict["vid_process_results"].append({"video_path": video_path, "frames": frames, "success": success})
