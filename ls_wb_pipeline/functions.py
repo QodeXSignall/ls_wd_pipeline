@@ -1,3 +1,4 @@
+from importlib.resources import read_text
 from urllib.parse import urlparse, parse_qs, unquote
 from ls_wb_pipeline.logger import logger
 from ls_wb_pipeline.settings import *
@@ -180,14 +181,9 @@ def clean_cloud_files_from_tasks(tasks, dry_run=False, save_annotated=True):
     return {"deleted_amount": len(files_to_delete), "saved": len(marked_files), "deleted": files_to_delete}
 
 def check_if_ann(task):
-    anns = task.get("annotations")
-    if not anns or not isinstance(anns, list):
-        return False
-    first_ann = anns[0]
-    results = first_ann.get("result", [])
-    if not results:
-        return False
-    return True
+    if task.get("total_annotations", 0):
+        return True
+
 
 def delete_all_cloud_files(dry_run=False):
     try:
