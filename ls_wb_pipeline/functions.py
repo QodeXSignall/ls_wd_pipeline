@@ -240,14 +240,7 @@ def get_all_tasks():
 
         logger.debug(f"[DEBUG] page={page}, получено задач: {len(page_tasks)}, total={total}")
 
-        for i, task in enumerate(all_tasks):
-            tid = task["id"]
-            r = requests.get(f"{LABELSTUDIO_API_URL}/tasks/{tid}", headers=HEADERS)
-            if r.status_code == 200:
-                all_tasks[i] = r.json()
-            else:
-                logger.warning(f"[LS] Не удалось загрузить детали для задачи {tid}")
-        print(all_tasks)
+
         if not page_tasks:
             logger.info("[LS] Получена пустая страница, завершаем.")
             break
@@ -267,7 +260,15 @@ def get_all_tasks():
             break
 
         page += 1
-
+    logger.info("Запрашиваем аннотации по каждой задаче")
+    for i, task in enumerate(all_tasks):
+        tid = task["id"]
+        r = requests.get(f"{LABELSTUDIO_API_URL}/tasks/{tid}", headers=HEADERS)
+        if r.status_code == 200:
+            all_tasks[i] = r.json()
+        else:
+            logger.warning(f"[LS] Не удалось загрузить детали для задачи {tid}")
+    print(all_tasks)
     logger.info(f"[LS] Уникальных задач: {len(all_tasks)}")
     return all_tasks
 
