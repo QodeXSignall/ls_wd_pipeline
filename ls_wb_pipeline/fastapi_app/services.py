@@ -26,21 +26,23 @@ def cleanup_frames_tasks(tasks, dry_run:bool = False, save_annotated: bool = Tru
 
 def enrich_dataset_and_cleanup(dry_run: bool = True, train_ratio=0.8, test_ratio=0.1, val_ratio=0.1,
                                del_unannotated: bool = True):
-    before = analyze_dataset_service()
+    report =  {
+        "status": "dataset built",
+        "dry_run": dry_run,
+        "before": None,
+        "after": None
+    }
+    report["before"] = analyze_dataset_service()
 
     all_tasks = functions.get_all_tasks()
     build_dataset.main_from_tasks(all_tasks, train_ratio=train_ratio, test_ratio=test_ratio, val_ratio=val_ratio)  # нужна будет версия main, принимающая уже загруженные данные
 
     if del_unannotated:
-        cleanup_frames_tasks(all_tasks, dry_run=dry_run, save_annotated=True)
-
+        delete_report = cleanup_frames_tasks(all_tasks, dry_run=dry_run, save_annotated=True)
+        report["delete_report"] = delete_report
     after = analyze_dataset_service()
-    return {
-        "status": "dataset built",
-        "dry_run": dry_run,
-        "before": before,
-        "after": after
-    }
+    report["after"] = after
+    return report
 
 
 def load_new_frames(max_frames: int = 300, only_cargo_type: str = None, fps: float = None, video_name: str = None):
