@@ -225,7 +225,7 @@ def get_all_tasks():
             f"{LABELSTUDIO_API_URL}/tasks"
             f"?project={PROJECT_ID}"
             f"&page={page}&page_size={page_size}"
-            f"&include=annotations,predictions,drafts"
+            f"&include=id,annotations,predictions,drafts"
         )
 
         logger.debug(f"[DEBUG] URL: {url}")
