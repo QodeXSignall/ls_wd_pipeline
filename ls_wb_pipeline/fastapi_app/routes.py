@@ -8,12 +8,13 @@ router = APIRouter()
 
 @router.post("/enrich-dataset", tags=["dataset"])
 def enrich_dataset(
-    dry_run: bool = Query(False, description="Построить датасет без удаления неразмеченных кадров"),
     train_ratio: float = Query(0.8, description="Тренировочная часть"),
     val_ratio: float = Query(0.1, description="Валидационная часть"),
-    test_ratio: float = Query(0.1, description="Тестовая часть")):
-    return services.enrich_dataset_and_cleanup(
-        dry_run=dry_run, train_ratio=train_ratio, test_ratio=test_ratio, val_ratio=val_ratio)
+    test_ratio: float = Query(0.1, description="Тестовая часть"),
+    del_unannotated: bool = Query(True, description="Удалить неразмеченные кадры"),
+    dry_run: bool = Query(default=False, description="Имитация удаления")):
+    return services.enrich_dataset_and_cleanup(dry_run=dry_run,
+        del_unannotated=del_unannotated, train_ratio=train_ratio, test_ratio=test_ratio, val_ratio=val_ratio)
 
 @router.get("/analyze-dataset", tags=["dataset"])
 def analyze_dataset():
