@@ -247,7 +247,7 @@ def get_all_tasks():
                 all_tasks[i] = r.json()
             else:
                 logger.warning(f"[LS] Не удалось загрузить детали для задачи {tid}")
-        print(tasks)
+        print(all_tasks)
         if not page_tasks:
             logger.info("[LS] Получена пустая страница, завершаем.")
             break
