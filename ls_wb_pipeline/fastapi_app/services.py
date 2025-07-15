@@ -14,11 +14,8 @@ def analyze_dataset_service():
 
 def cleanup_frames_tasks(tasks, dry_run:bool = False, save_annotated: bool = True):
     deleted_tasks, saved_amount = functions.delete_ls_tasks(tasks=tasks, dry_run=dry_run, save_annotated=save_annotated)
-    if save_annotated:
-        deleted_files_report = functions.clean_cloud_files_from_tasks(
-            tasks=tasks, dry_run=dry_run, save_annotated=save_annotated)
-    else:
-        deleted_files_report = functions.delete_all_cloud_files(dry_run=dry_run)
+    deleted_files_report = functions.clean_cloud_files_from_tasks(
+        tasks=tasks, dry_run=dry_run, save_annotated=save_annotated)
     return {"status": "cleaned", "result":
         {"files": {"deleted_amount": deleted_files_report["deleted_amount"],
                    "saved_amount": deleted_files_report["saved"],
