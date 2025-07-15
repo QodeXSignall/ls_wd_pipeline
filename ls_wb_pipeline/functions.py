@@ -224,7 +224,7 @@ def get_all_tasks():
         url = (
             f"{LABELSTUDIO_API_URL}/tasks"
             f"?project={PROJECT_ID}"
-            f"&page={page}&page_size={page_size}"
+            f"&page={page}&page_size={page_size}&fields=all"
         )
 
         logger.debug(f"[DEBUG] URL: {url}")
@@ -260,16 +260,6 @@ def get_all_tasks():
             break
 
         page += 1
-    logger.info("Запрашиваем аннотации по каждой задаче")
-    for i, task in enumerate(all_tasks):
-        tid = task["id"]
-        r = requests.get(f"{LABELSTUDIO_API_URL}/tasks/{tid}", headers=HEADERS)
-        if r.status_code == 200:
-            all_tasks[i] = r.json()
-        else:
-            logger.warning(f"[LS] Не удалось загрузить детали для задачи {tid}")
-    print(all_tasks)
-    logger.info(f"[LS] Уникальных задач: {len(all_tasks)}")
     return all_tasks
 
 
