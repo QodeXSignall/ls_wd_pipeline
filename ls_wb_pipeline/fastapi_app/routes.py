@@ -50,7 +50,8 @@ def delete_frames(
         dry_run: bool = Query(False, description="Имитация удаления"),
         save_annotated: bool = Query(default=True,
                                      description="Сохранить уже анотированые кадры?"),):
-    return services.cleanup_frames_tasks(dry_run=dry_run, save_annotated=save_annotated)
+    tasks = services.functions.get_all_tasks()
+    return services.cleanup_frames_tasks(tasks=tasks, dry_run=dry_run, save_annotated=save_annotated)
 
 @router.delete("/clean-download-history", tags=["service"])
 def clean_download_history():
