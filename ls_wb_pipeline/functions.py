@@ -194,19 +194,27 @@ def delete_all_cloud_files(dry_run=False):
         actual_files = [f for f in os.listdir(MOUNTED_PATH) if f.lower().endswith(".jpg")]
     except Exception as e:
         logger.error(f"Не удалось прочитать директорию {MOUNTED_PATH}: {e}")
-        return
-    delete_files(files=actual_files, dry_run=dry_run)
+        return {"error": e}
+    report =  delete_files(files=actual_files, dry_run=dry_run)
+    report["saved_amount"] = 0
+    report["saved"] = []
+    return report
 
 
 def delete_files(files, dry_run=False):
+    deleted_amount = 0
+    deleted = []
     for file in files:
         if dry_run:
             logger.info(f"[DRY RUN] Будет удалено: {file}")
         else:
             try:
                 os.remove(os.path.join("/mnt", file))
+                deleted_amount += 1
+                deleted.append(file)
             except Exception as e:
                 logger.error(f"Ошибка при удалении {file}: {e}")
+    return {"deleted": deleted, "deleted_amount": deleted_amount}
 
 
 def get_all_tasks():
