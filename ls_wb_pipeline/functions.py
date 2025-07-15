@@ -181,9 +181,8 @@ def clean_cloud_files_from_tasks(tasks, dry_run=False, save_annotated=True):
     return {"deleted_amount": len(files_to_delete), "saved": len(marked_files), "deleted": files_to_delete}
 
 def check_if_ann(task):
-    if task.get("total_annotations", 0):
-        return True
-
+    anns = task.get("total_annotations", 0)
+    return anns
 
 def delete_all_cloud_files(dry_run=False):
     try:
@@ -222,7 +221,12 @@ def get_all_tasks():
     logger.info("[LS] Загружаем все задачи с пагинацией (по страницам)...")
 
     while True:
-        url = f"{LABELSTUDIO_API_URL}/tasks?project={PROJECT_ID}&page={page}&page_size={page_size}"
+        url = (
+            f"{LABELSTUDIO_API_URL}/tasks"
+            f"?project={PROJECT_ID}"
+            f"&page={page}&page_size={page_size}"
+            f"&include=annotations,predictions,drafts"
+        )
 
         logger.debug(f"[DEBUG] URL: {url}")
         r = requests.get(url, headers=HEADERS)
