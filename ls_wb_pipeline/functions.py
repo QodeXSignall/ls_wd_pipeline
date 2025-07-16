@@ -180,9 +180,8 @@ def clean_cloud_files_from_tasks(tasks, dry_run=False, save_annotated=True):
                 f"оставлено: {len(marked_files)}")
     return {"deleted_amount": len(files_to_delete), "saved": len(marked_files), "deleted": files_to_delete}
 
-def check_if_ann(task):
-    anns = task.get("total_annotations", 0)
-    return anns
+def check_if_ann(task: dict) -> bool:
+    return bool(task.get("annotations"))
 
 def delete_all_cloud_files(dry_run=False):
     try:
