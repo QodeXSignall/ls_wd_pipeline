@@ -24,6 +24,6 @@ DATASET_SPLIT = {"train": 0.7, "test": 0.2, "val": 0.1}
 CYCLE_INTERVAL = 3600  # Время между циклами в секундах (1 час)
 MOUNTED_PATH = "/mnt/webdav_frames"  # Локальный путь для монтирования WebDAV
 FRAMES_PER_SECOND_EURO = 1
-FRAMES_PER_SECOND_BUNKER = 0.25
+FRAMES_PER_SECOND_BUNKER = 0.2
 WEBDAV_REMOTE = "webdav:/Tracker/annotation_frames"
 DOWNLOAD_HISTORY_FILE = "downloaded_videos.json"
