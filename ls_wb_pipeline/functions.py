@@ -496,7 +496,6 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
 
     result_dict = {"total_frames_downloaded": 0, "vid_process_results": [], "total_frames_in_storage": 0}
     while True:
-
         # Проверяем количество кадров перед началом обработки видео
         try:
             items = with_retries(lambda: client.list(REMOTE_FRAME_DIR), log_prefix="[WebDAV:list REMOTE_FRAME_DIR] ")
@@ -570,11 +569,11 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
             continue
 
         # Нарезаем кадры сразу после скачивания
-        logger.info(f"Нарезка кадров из {local_path}. Заданный FSP - {fps}")
-        if not fps:
-            fps = FRAMES_PER_SECOND_EURO if cargo_type == "euro" else FRAMES_PER_SECOND_BUNKER
-            logger.info(f"Поскольку FPS не указан, были взяты величины по умолчанию. Для {cargo_type} это {fps}")
-        success, video_path, frames = (extract_frames(local_path, frames_per_second=fps))
+        effective_fps = fps if fps is not None else (
+            FRAMES_PER_SECOND_EURO if cargo_type == "euro" else FRAMES_PER_SECOND_BUNKER
+        )
+        logger.info(f"Нарезка кадров из {local_path}. Используется FPS: {effective_fps}")
+        success, video_path, frames = extract_frames(local_path, frames_per_second=effective_fps)
         if not success:
             logger.warning(f"Не удалось обработать видео: {video_path}")
         result_dict["vid_process_results"].append({"video_path": video_path, "frames": frames, "success": success})
