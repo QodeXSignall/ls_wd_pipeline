@@ -1,4 +1,4 @@
-from ls_wb_pipeline import functions, build_dataset
+from ls_wb_pipeline import functions, build_dataset_cls
 from ls_wb_pipeline import settings
 import tempfile
 import shutil
@@ -8,7 +8,7 @@ import os
 
 
 def analyze_dataset_service():
-    result = build_dataset.analyze_dataset()
+    result = build_dataset_cls.analyze_dataset_cls()
     return {"status": "analyzed", "result": result}
 
 
@@ -35,7 +35,7 @@ def enrich_dataset_and_cleanup(dry_run: bool = True, train_ratio=0.8, test_ratio
     report["before"] = analyze_dataset_service()
 
     all_tasks = functions.get_all_tasks()
-    build_dataset.main_from_tasks(all_tasks, train_ratio=train_ratio, test_ratio=test_ratio, val_ratio=val_ratio)  # нужна будет версия main, принимающая уже загруженные данные
+    build_dataset_cls.build_dataset_cls_from_tasks(all_tasks, train_ratio=train_ratio, test_ratio=test_ratio, val_ratio=val_ratio)  # нужна будет версия main, принимающая уже загруженные данные
 
     if del_unannotated:
         delete_report = cleanup_frames_tasks(all_tasks, dry_run=dry_run, save_annotated=True)

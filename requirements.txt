@@ -5,3 +5,8 @@ scikit-learn
 fastapi
 python-multipart
 uvicorn
+torch
+torchvision
+tqdm
+pandas
+seaborn

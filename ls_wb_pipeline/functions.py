@@ -1,5 +1,4 @@
-from importlib.resources import read_text
-from urllib.parse import urlparse, parse_qs, unquote
+from urllib.parse import urlparse, parse_qs
 from ls_wb_pipeline.logger import logger
 from ls_wb_pipeline.settings import *
 from webdav3.client import Client
@@ -295,6 +294,19 @@ def delete_ls_tasks(tasks, dry_run=False, save_annotated=True):
     return to_delete, saved
 
 
+def frames_to_video(input_dir, output_video_path, fps=25):
+    frame_files = sorted(f for f in os.listdir(input_dir) if f.endswith(".jpg"))
+    sample = cv2.imread(os.path.join(input_dir, frame_files[0]))
+    height, width, _ = sample.shape
+
+    out = cv2.VideoWriter(output_video_path, cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height))
+
+    for file in frame_files:
+        frame = cv2.imread(os.path.join(input_dir, file))
+        out.write(frame)
+    out.release()
+    print(f"🎞 Видео сохранено: {output_video_path}")
+
 
 def extract_frames(video_path, frames_per_second: float = None):
     """Разбивает видео на кадры и загружает в WebDAV с повторной попыткой при ошибках."""
@@ -510,8 +522,6 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
                 return {"error": f"Достигнут лимит кадров ({frame_count}/{max_frames})"}
             else:
                 return result_dict
-        #else:
-        #   logger.info(f"\nВ данный момент в хранилище ({frame_count}/{max_frames}). Продолжаем обработку.")
 
         try:
             video = next(video_generator)
@@ -576,7 +586,8 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
         success, video_path, frames = extract_frames(local_path, frames_per_second=effective_fps)
         if not success:
             logger.warning(f"Не удалось обработать видео: {video_path}")
-        result_dict["vid_process_results"].append({"video_path": video_path, "frames": frames, "success": success})
+        result_dict["vid_process_results"].append(
+            {"video_path": video_path, "frames": frames, "success": success, "cargo_type": cargo_type})
         result_dict["total_frames_downloaded"] += int(frames)
         result_dict["total_frames_in_storage"] = frame_count + int(frames)
         save_download_history()
