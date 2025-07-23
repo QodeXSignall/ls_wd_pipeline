@@ -3,27 +3,34 @@ Build YOLO‑v5/v8 **image‑classification** dataset from Label Studio JSON ex
 
 Key points
 ===========
-* Works with **choice‑based** tasks (type=="choices") — typical for whole‑image classification.
-* Folder layout expected by Ultralytics:
+* Designed for **choice‑based** tasks (each image assigned a single class via `choices`).
+* Folder layout expected by Ultralytics classification:
 
     DATASET_ROOT/
         ├── train/
-        │   ├── class_A/ *.jpg
-        │   ├── class_B/ *.jpg
-        ├── val/  /class_A/…
-        └── test/ /class_B/…
+        │   ├── class_A/  *.jpg
+        │   └── class_B/  *.jpg
+        ├── val/   ...
+        └── test/  ...
 
-* Optional class balancing check; graceful fallback when some classes have <2 samples so that `train_test_split(stratify=…)` does not crash.
-* Creates **labels.txt** in the dataset root (one class per line). No YAML is strictly required by Ultralytics ≥v8.1 when you point `yolo classify train data=DATASET_ROOT`.
+* Generates **labels.txt** (one class per line) – Ultralytics ≥ v8 can infer classes from folder names, but labels.txt is handy for quick reference.
+* Provides quick audit: **`analyze_dataset_cls()`** or CLI flag `--analyze`.
+* Robust path resolution: avoids the common *“/mnt/webdav_frames/webdav_frames/…”* duplication when `--mount` already points to the parent folder.
 
-Usage
------
+Usage examples
+--------------
 ```bash
-python build_dataset_cls.py --json response.json \
-                            --dataset ./cls_dataset \
-                            --mount /mnt/webdav_frames
+# Build dataset (images live under /mnt/webdav_frames/*)
+python build_dataset_cls.py \
+       --json response.json \
+       --dataset ./cls_dataset \
+       --mount /mnt/webdav_frames   #  or /mnt if you want /mnt/webdav_frames/...  👈
 
-# add --symlink to save disk space instead of copying images
+# Analyse existing dataset
+python build_dataset_cls.py --dataset ./cls_dataset --analyze
+
+# Save disk space by linking instead of copying
+python build_dataset_cls.py ... --symlink
 ```
 """
 from __future__ import annotations
@@ -31,12 +38,12 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 import shutil
 from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, Sequence
+from typing import Any, Dict, Sequence
 from ls_wb_pipeline import settings
+
 from sklearn.model_selection import train_test_split
 
 # ---------------------------------------------------------------------------
@@ -54,45 +61,33 @@ def _get_choice_label(task: Dict[str, Any]) -> str | None:
     return None
 
 
-def _decode_image_path(url: str) -> str:
-    """Label Studio local‑files URL → relative path inside mounted storage."""
+def _decode_image_path(url: str) -> Path:
+    """Label Studio local‑files URL → *relative* path w.r.t. mounted storage."""
+    # e.g. "/data/local-files/?d=webdav_frames/some.jpg" → "webdav_frames/some.jpg"
     if "?d=" in url:
-        return url.split("?d=")[-1]
-    return os.path.basename(url)
+        url = url.split("?d=")[-1]
+    return Path(url.lstrip("/"))
 
-def analyze_dataset_cls(dataset_root = settings.DATASET_PATH):
-    """Return and print number of images per class per split."""
-    dataset_root = Path(dataset_root)
-    stats: dict[str, dict[str, int]] = defaultdict(lambda: {"train": 0, "val": 0, "test": 0, "total": 0})
 
-    for split in ("train", "val", "test"):
-        split_dir = dataset_root / split
-        if not split_dir.exists():
-            continue
-        for cls_dir in split_dir.iterdir():
-            if cls_dir.is_dir():
-                count = len([p for p in cls_dir.iterdir() if p.suffix.lower() in {".jpg", ".jpeg", ".png"}])
-                stats[cls_dir.name][split] = count
+def _resolve_src(rel_path: Path, mounted_root: Path | None) -> Path:
+    """Join mounted_root + rel_path but avoid duplicate folder names.
 
-    # total
-    for cls, d in stats.items():
-        d["total"] = d["train"] + d["val"] + d["test"]
+    Typical pattern:
+        mounted_root = "/mnt/webdav_frames"
+        rel_path     = "webdav_frames/img.jpg"
+        Desired      = "/mnt/webdav_frames/img.jpg"
+    """
+    if not mounted_root:
+        return rel_path
 
-    # pretty print
-    if stats:
-        print("\n📊  Images per class:")
-        hdr = f"{'Class':25} | train | val | test | total"
-        print(hdr)
-        print("-" * len(hdr))
-        for cls, d in stats.items():
-            print(f"{cls:25} | {d['train']:5} | {d['val']:3} | {d['test']:4} | {d['total']:5}")
-    else:
-        print("No images found in dataset.")
-
-    return stats
+    # If the first part of rel_path equals mounted_root.name, drop it.
+    rel_parts = rel_path.parts
+    if rel_parts and rel_parts[0] == mounted_root.name:
+        rel_path = Path(*rel_parts[1:])
+    return mounted_root / rel_path
 
 # ---------------------------------------------------------------------------
-# 🚀 main routine
+# 🚀 build routine
 # ---------------------------------------------------------------------------
 
 def build_dataset_cls_from_tasks(
@@ -105,15 +100,8 @@ def build_dataset_cls_from_tasks(
     test_ratio: float = 0.1,
     symlink: bool = False,
 ) -> None:
-    """Convert tasks → folder dataset for classification.
+    """Convert tasks → folder dataset suitable for Ultralytics classification."""
 
-    Args
-    -----
-    tasks: list loaded from LS JSON.
-    dataset_root: where to create `train/ val/ test/`.
-    mounted_root: root of physical images (if different from working dir).
-    symlink: link instead of copy to save space.
-    """
     dataset_root = Path(dataset_root)
     mounted_root = Path(mounted_root) if mounted_root else None
 
@@ -124,9 +112,7 @@ def build_dataset_cls_from_tasks(
         if not cls:
             continue
         rel_img_path = _decode_image_path(t["data"]["image"])
-        src = Path(rel_img_path)
-        if mounted_root:
-            src = mounted_root / rel_img_path
+        src = _resolve_src(rel_img_path, mounted_root)
         entries.append({"class": cls, "src": src, "name": src.name})
 
     if not entries:
@@ -175,29 +161,68 @@ def build_dataset_cls_from_tasks(
         f.write("\n".join(classes))
 
     # 6️⃣ Console summary
-    total = len(entries)
-    print("\n📊  Summary  —  images per split")
-    for sp in ("train", "val", "test"):
-        print(f"  {sp:<5}: {len(split[sp]):>4}")
-    print("\n📦  Classes:")
-    for cls in classes:
-        print(f"  {cls}")
+    print("\n✅  Dataset created at:", dataset_root)
+    stats = analyze_dataset_cls(dataset_root)
     if skipped:
-        print(f"\n⚠️  {skipped} images listed in JSON not found on disk; skipped.")
-    print(f"\n✅  Dataset created at: {dataset_root}\n    classes = {len(classes)}  |  images = {total}  |  copied = {copied}")
+        print(f"⚠️  {skipped} images referenced in JSON not found at resolved path.\n    → Проверьте правильность --mount: {mounted_root or '<not set>'}\n      Пример проблемного пути: {entries[0]['src'] if entries else '<n/a>'}")
 
+    return stats
+
+# ---------------------------------------------------------------------------
+# 📊 analyze routine
+# ---------------------------------------------------------------------------
+
+def analyze_dataset_cls(dataset_root: Path | str = settings.DATASET_PATH) -> dict[str, dict[str, int]]:
+    """Return and print number of images per class per split."""
+    dataset_root = Path(dataset_root)
+    stats: dict[str, dict[str, int]] = defaultdict(lambda: {"train": 0, "val": 0, "test": 0, "total": 0})
+
+    for split in ("train", "val", "test"):
+        split_dir = dataset_root / split
+        if not split_dir.exists():
+            continue
+        for cls_dir in split_dir.iterdir():
+            if cls_dir.is_dir():
+                count = len([p for p in cls_dir.iterdir() if p.suffix.lower() in {".jpg", ".jpeg", ".png"}])
+                stats[cls_dir.name][split] = count
+
+    # total
+    for cls, d in stats.items():
+        d["total"] = d["train"] + d["val"] + d["test"]
+
+    # pretty print
+    if stats:
+        print("\n📊  Images per class:")
+        hdr = f"{'Class':25} | train | val | test | total"
+        print(hdr)
+        print("-" * len(hdr))
+        for cls, d in stats.items():
+            print(f"{cls:25} | {d['train']:5} | {d['val']:3} | {d['test']:4} | {d['total']:5}")
+    else:
+        print("No images found in dataset.")
+
+    return stats
 
 # ---------------------------------------------------------------------------
 # 📜 CLI
 # ---------------------------------------------------------------------------
 
 def _cli() -> None:
-    p = argparse.ArgumentParser("Build YOLO classification dataset from Label Studio export")
-    p.add_argument("--json", required=True, help="Label Studio JSON export")
-    p.add_argument("--dataset", required=True, help="Output dataset root")
-    p.add_argument("--mount", default="", help="Root where raw images live (if not cwd)")
+    p = argparse.ArgumentParser("Build or analyze YOLO classification dataset from Label Studio export")
+
+    p.add_argument("--dataset", required=True, help="Dataset root (for build or analyze)")
+    p.add_argument("--json", default="", help="Label Studio JSON export (provide to build)")
+    p.add_argument("--mount", default="", help="Filesystem root where images reside (e.g. /mnt or /mnt/webdav_frames)")
     p.add_argument("--symlink", action="store_true", help="Use symlinks instead of copying images")
+    p.add_argument("--analyze", action="store_true", help="Only analyze existing dataset; ignore --json")
     args = p.parse_args()
+
+    if args.analyze:
+        analyze_dataset_cls(Path(args.dataset))
+        return
+
+    if not args.json:
+        raise SystemExit("--json is required when not using --analyze")
 
     with open(args.json, "r", encoding="utf-8") as f:
         tasks = json.load(f)
