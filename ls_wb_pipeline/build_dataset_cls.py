@@ -72,9 +72,10 @@ def build_classification_dataset(all_tasks, train_ratio=0.8, test_ratio=0.1, val
 
 
 
+
 def analyze_classification_dataset(dataset_path):
     """
-    Анализирует датасет классификации (по структуре каталогов).
+    Анализирует датасет классификации (по структуре class_0, class_1...).
     Возвращает словарь с количеством изображений по классам и сплитам.
     """
     try:
@@ -91,8 +92,8 @@ def analyze_classification_dataset(dataset_path):
             split_dir = os.path.join(dataset_path, split)
             if not os.path.exists(split_dir):
                 continue
-            for class_id, class_name in enumerate(classes):
-                class_dir = os.path.join(split_dir, class_name)
+            for class_id in range(len(classes)):
+                class_dir = os.path.join(split_dir, f"class_{class_id}")
                 if not os.path.isdir(class_dir):
                     continue
                 image_files = [
@@ -126,6 +127,7 @@ def analyze_classification_dataset(dataset_path):
         return result
     except Exception as e:
         return {"error": f"Ошибка при анализе датасета: {str(e)}"}
+
 
 
 def main_from_json(json_path):
