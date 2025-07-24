@@ -29,37 +29,47 @@ def build_classification_dataset(all_tasks, train_ratio=0.8, test_ratio=0.1, val
                 "class": class_name
             })
             stats[class_name] += 1
-        except Exception as e:
+        except Exception:
             continue
-
-    print("\n📊 Распределение классов:")
-    for cls, count in stats.items():
-        print(f"{cls:25} — {count} изображений")
 
     if not entries:
         print("❗ Нет валидных размеченных задач.")
         return
 
+    # Назначение class_id и сохранение classes.txt
+    class_to_id = {cls: idx for idx, cls in enumerate(sorted(stats.keys()))}
+    classes_path = os.path.join(settings.DATASET_PATH, "labels.txt")
+    os.makedirs(settings.DATASET_PATH, exist_ok=True)
+    with open(classes_path, "w", encoding="utf-8") as f:
+        for cls in sorted(class_to_id.keys(), key=lambda k: class_to_id[k]):
+            f.write(f"{cls}\n")
+
+    print("\n📊 Распределение классов:")
+    for cls, count in stats.items():
+        print(f"{cls:25} — {count} изображений")
+
     # Разделение
     if len(entries) < 3:
         split_data = {"train": entries, "val": [], "test": []}
     else:
-        train_val, test = train_test_split(entries, test_size=test_ratio, random_state=42)
-        train, val = train_test_split(train_val, test_size=val_ratio / (train_ratio + val_ratio), random_state=42)
+        train_val, test = train_test_split(entries, test_size=test_ratio, random_state=42, stratify=[e["class"] for e in entries])
+        train, val = train_test_split(train_val, test_size=val_ratio / (train_ratio + val_ratio), random_state=42, stratify=[e["class"] for e in train_val])
         split_data = {"train": train, "val": val, "test": test}
 
     # Копирование
     for split, items in split_data.items():
         for item in items:
-            class_dir = os.path.join(settings.DATASET_PATH, split, item["class"])
+            class_id = class_to_id[item["class"]]
+            class_dir = os.path.join(settings.DATASET_PATH, split, f"class_{class_id}")
             os.makedirs(class_dir, exist_ok=True)
 
             src = os.path.join(settings.MOUNTED_PATH, item["image"])
             dst = os.path.join(class_dir, item["image"])
             if os.path.exists(src):
                 shutil.copy(src, dst)
-
     print(f"\n✅ Классификационный датасет собран: {settings.DATASET_PATH}")
+    return {"stats": True, "path": settings.DATASET_PATH}
+
 
 
 def analyze_classification_dataset(dataset_path):
@@ -68,9 +78,9 @@ def analyze_classification_dataset(dataset_path):
     Возвращает словарь с количеством изображений по классам и сплитам.
     """
     try:
-        classes_file = os.path.join(dataset_path, "classes.txt")
+        classes_file = os.path.join(dataset_path, "labels.txt")
         if not os.path.exists(classes_file):
-            return {"error": "Файл classes.txt не найден — датасет ещё не создан"}
+            return {"error": "Файл labels.txt не найден — датасет ещё не создан"}
 
         with open(classes_file, "r", encoding="utf-8") as f:
             classes = [line.strip() for line in f if line.strip()]
