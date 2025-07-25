@@ -6,17 +6,28 @@ from collections import Counter
 from sklearn.model_selection import train_test_split
 from ls_wb_pipeline import settings
 
+def get_latest_valid_annotation(annotations):
+    valid = [a for a in annotations if not a.get("was_cancelled", False)]
+    if not valid:
+        return None
+    return max(valid, key=lambda x: x.get("created_at", ""))
 
 def build_classification_dataset(all_tasks, train_ratio=0.8, test_ratio=0.1, val_ratio=0.1):
     entries = []
     stats = Counter()
+    used_image_names = set()
 
     for task in all_tasks:
+
         anns = task.get("annotations", [])
         if not anns or not isinstance(anns, list):
             continue
 
-        results = anns[0].get("result", [])
+        latest = get_latest_valid_annotation(anns)
+        if not latest:
+            continue
+
+        results = latest.get("result", [])
         if not results:
             continue
 
@@ -24,6 +35,9 @@ def build_classification_dataset(all_tasks, train_ratio=0.8, test_ratio=0.1, val
             class_name = results[0]["value"]["choices"][0]
             image_url = task["data"]["image"]
             image_name = os.path.basename(unquote(image_url))
+            if image_name in used_image_names:
+                continue  # ⚠️ Уже обработан
+            used_image_names.add(image_name)
             entries.append({
                 "image": image_name,
                 "class": class_name
