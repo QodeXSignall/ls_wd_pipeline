@@ -6,7 +6,7 @@ from ls_wb_pipeline.fastapi_app import services
 router = APIRouter()
 
 
-@router.post("/enrich-dataset", tags=["dataset"])
+@router.post("/build_dataset", tags=["dataset"])
 def build_dataset(
     train_ratio: float = Query(0.8, description="Тренировочная часть"),
     val_ratio: float = Query(0.1, description="Валидационная часть"),
