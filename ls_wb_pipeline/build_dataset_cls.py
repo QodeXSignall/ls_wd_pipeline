@@ -18,6 +18,19 @@ def build_classification_dataset(all_tasks, train_ratio=0.8, test_ratio=0.1, val
     stats = Counter()
     used_image_names = set()
 
+    existing_files = set()
+    for split in ("train", "val", "test"):
+        split_path = os.path.join(settings.DATASET_PATH, split)
+        if not os.path.exists(split_path):
+            continue
+        for class_dir in os.listdir(split_path):
+            class_path = os.path.join(split_path, class_dir)
+            if not os.path.isdir(class_path):
+                continue
+            for fname in os.listdir(class_path):
+                if fname.lower().endswith((".jpg", ".jpeg", ".png")):
+                    existing_files.add(fname)
+
     for task in all_tasks:
 
         anns = task.get("annotations", [])
@@ -38,6 +51,8 @@ def build_classification_dataset(all_tasks, train_ratio=0.8, test_ratio=0.1, val
             image_name = os.path.basename(unquote(image_url))
             if image_name in used_image_names:
                 continue  # ⚠️ Уже обработан
+            if image_name in existing_files:
+                continue  # ⚠️ Файл уже есть в датасете
             used_image_names.add(image_name)
             entries.append({
                 "image": image_name,
