@@ -21,34 +21,48 @@ def check_dataset_duplicates(dataset_path):
             for file in os.listdir(class_path):
                 if not file.lower().endswith((".jpg", ".jpeg", ".png")):
                     continue
-                file_path = os.path.join(class_path, file)
                 key = (split, file)
                 file_to_classes[key].add(class_dir)
                 file_to_splits[file].add(split)
                 filename_counts[file] += 1
 
+    conflict_in_classes = []
+    conflict_in_splits = []
+    repeated_names = []
+
     # Проверка 1: один и тот же файл в нескольких классах внутри одного сплита
     for (split, filename), class_set in file_to_classes.items():
         if len(class_set) > 1:
-            errors.append(f"[!] Файл '{filename}' находится в нескольких классах внутри '{split}': {class_set}")
+            conflict_in_classes.append({
+                "split": split,
+                "filename": filename,
+                "classes": list(class_set)
+            })
 
     # Проверка 2: один и тот же файл в нескольких сплитах
     for filename, split_set in file_to_splits.items():
         if len(split_set) > 1:
-            errors.append(f"[!] Файл '{filename}' присутствует в нескольких сплитах: {split_set}")
+            conflict_in_splits.append({
+                "filename": filename,
+                "splits": list(split_set)
+            })
 
-    # Проверка 3: дублирующиеся имена в целом
+    # Проверка 3: дублирующиеся имена
     for filename, count in filename_counts.items():
         if count > 1:
-            errors.append(f"[!] Повторяющееся имя файла: '{filename}' встречается {count} раз")
+            repeated_names.append({
+                "filename": filename,
+                "count": count
+            })
 
-    if errors:
-        print("Обнаружены проблемы в датасете:")
-        for err in errors:
-            print(err)
-    else:
-        print("✅ Датасет в порядке. Дубликатов не найдено.")
+    return {
+        "ok": not (conflict_in_classes or conflict_in_splits or repeated_names),
+        "conflict_in_classes": conflict_in_classes,
+        "conflict_in_splits": conflict_in_splits,
+        "repeated_names": repeated_names
+    }
+
 
 if __name__ == "__main__":
-    dataset_dir = '/Users/artur/Downloads/dataset (3)'  # <-- Укажи путь к датасету
+    dataset_dir = '/Users/artur/Downloads/dataset (4)'  # <-- Укажи путь к датасету
     check_dataset_duplicates(dataset_dir)

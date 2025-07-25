@@ -3,6 +3,7 @@ import shutil
 import json
 from urllib.parse import unquote
 from collections import Counter
+from ls_wb_pipeline.dataset_checker import check_dataset_duplicates
 from sklearn.model_selection import train_test_split
 from ls_wb_pipeline import settings
 
@@ -137,7 +138,7 @@ def analyze_classification_dataset(dataset_path):
                 "total": total_cls,
                 "percent": round(percent, 1)
             })
-
+        result["duplicates"] = check_dataset_duplicates(settings.DATASET_PATH)
         return result
     except Exception as e:
         return {"error": f"Ошибка при анализе датасета: {str(e)}"}
