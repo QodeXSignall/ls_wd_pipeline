@@ -318,17 +318,17 @@ def extract_frames(video_path, frames_per_second: float = None):
         logger.warning(
             f"Превышен лимит кадров в хранилище ({existing_frames} >= 5000). Пропускаем видео {video_path}.")
         cap.release()
-        return video_path, False
+        return False, video_path, existing_frames
 
     if not cap.isOpened():
         logger.error(f"Ошибка: Не удалось открыть видео {video_path}")
-        return video_path, False  # Возвращаем видео с ошибкой
+        return False, video_path, existing_frames  # Возвращаем видео с ошибкой
 
     fps = cap.get(cv2.CAP_PROP_FPS)
     if fps <= 0:
         logger.error(f"Ошибка: FPS не определен для {video_path}")
         cap.release()
-        return video_path, False
+        return False, video_path, extract_frames
 
     frame_interval = max(int(fps / frames_per_second), 1)
     frame_count = 0
@@ -367,7 +367,7 @@ def extract_frames(video_path, frames_per_second: float = None):
                     logger.error(
                         f"Не удалось загрузить кадр {frame_filename} после {max_retries} попыток.")
                     cap.release()
-                    return video_path, False
+                    return False,video_path, existing_frames
             else:
                 logger.warning(
                     f"Предупреждение: Кадр {local_frame_path} не был создан.")
