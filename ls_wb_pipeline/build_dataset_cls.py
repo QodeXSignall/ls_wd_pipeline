@@ -66,12 +66,22 @@ def build_classification_dataset(all_tasks, train_ratio=0.8, test_ratio=0.1, val
         print("❗ Нет валидных размеченных задач.")
         return
 
-    # Назначение class_id и сохранение classes.txt
-    class_to_id = {cls: idx for idx, cls in enumerate(sorted(stats.keys()))}
+    # Загрузка существующих классов (если есть)
     classes_path = os.path.join(settings.DATASET_PATH, "labels.txt")
+    existing_classes = []
+    if os.path.exists(classes_path):
+        with open(classes_path, "r", encoding="utf-8") as f:
+            existing_classes = [line.strip() for line in f if line.strip()]
+
+    # Объединение классов: старые + новые
+    new_classes = sorted(stats.keys())
+    all_classes = list(dict.fromkeys(existing_classes + new_classes))  # сохраняем порядок, избегаем дубликатов
+    class_to_id = {cls: idx for idx, cls in enumerate(all_classes)}
+
+    # Перезапись labels.txt
     os.makedirs(settings.DATASET_PATH, exist_ok=True)
     with open(classes_path, "w", encoding="utf-8") as f:
-        for cls in sorted(class_to_id.keys(), key=lambda k: class_to_id[k]):
+        for cls in all_classes:
             f.write(f"{cls}\n")
 
     print("\n📊 Распределение классов:")
