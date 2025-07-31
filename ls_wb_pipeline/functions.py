@@ -323,7 +323,7 @@ def extract_frames(video_path, frames_per_second: float = None):
     if fps <= 0:
         logger.error(f"Ошибка: FPS не определен для {video_path}")
         cap.release()
-        return False, video_path, extract_frames
+        return False, video_path, existing_frames
 
     frame_interval = max(int(fps / frames_per_second), 1)
     frame_count = 0
@@ -580,6 +580,7 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
         )
         logger.info(f"Нарезка кадров из {local_path}. Используется FPS: {effective_fps}")
         success, video_path, frames = extract_frames(local_path, frames_per_second=effective_fps)
+        logger.info(f"Статус: {success}. Кадров {frames}/{max_frames}")
         if not success:
             logger.warning(f"Не удалось обработать видео: {video_path}")
             if frames >= max_frames:
