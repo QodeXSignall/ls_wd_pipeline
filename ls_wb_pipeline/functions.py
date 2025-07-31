@@ -537,6 +537,7 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
                 return result_dict
 
         try:
+            logger.debug("Получаем видео с генератора...")
             video = next(video_generator)
         except StopIteration:
             logger.info("Все видео обработаны")
