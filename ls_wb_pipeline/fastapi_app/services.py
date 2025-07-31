@@ -1,4 +1,5 @@
 from ls_wb_pipeline import functions, build_dataset_cls
+from ls_wb_pipeline.logger import logger
 from ls_wb_pipeline import settings
 import tempfile
 import shutil
@@ -13,9 +14,12 @@ def analyze_dataset_service():
 
 
 def cleanup_frames_tasks(tasks, dry_run:bool = False, save_annotated: bool = True):
+    logger.info("Удаление задач labelstudio")
     deleted_tasks, saved_amount = functions.delete_ls_tasks(tasks=tasks, dry_run=dry_run, save_annotated=save_annotated)
+    logger.info("Удаление файлов с облака")
     deleted_files_report = functions.clean_cloud_files_from_tasks(
         tasks=tasks, dry_run=dry_run, save_annotated=save_annotated)
+    logger.info("Удаление завершено")
     return {"status": "cleaned", "result":
         {"files": {"deleted_amount": deleted_files_report["deleted_amount"],
                    "saved_amount": deleted_files_report["saved"],
