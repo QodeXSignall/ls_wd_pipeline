@@ -599,7 +599,8 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
         )
         logger.info(f"Нарезка кадров из {local_path}. Используется FPS: {effective_fps}")
         success, video_path, frames = extract_frames(local_path, frames_per_second=effective_fps)
-        logger.info(f"Статус: {success}. Кадров {frames}/{max_frames}")
+        total_frames_in_storage = frame_count + int(frames)
+        logger.info(f"Статус: {success}. Кадров {total_frames_in_storage}/{max_frames}")
         if not success:
             logger.warning(f"Не удалось обработать видео: {video_path}")
             if frames >= max_frames:
@@ -607,7 +608,7 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
         result_dict["vid_process_results"].append(
             {"video_path": video_path, "frames": frames, "success": success, "cargo_type": cargo_type})
         result_dict["total_frames_downloaded"] += int(frames)
-        result_dict["total_frames_in_storage"] = frame_count + int(frames)
+        result_dict["total_frames_in_storage"] = total_frames_in_storage
         save_download_history()
         if concrete_video_name:
             break
