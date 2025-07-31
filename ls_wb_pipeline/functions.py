@@ -316,15 +316,15 @@ def frames_to_video(input_dir, output_video_path, fps=25):
     print(f"🎞 Видео сохранено: {output_video_path}")
 
 
-def extract_frames(video_path, frames_per_second: float = None):
+def extract_frames(video_path, frames_per_second: float = None, max_frames: int = None):
     """Разбивает видео на кадры и загружает в WebDAV с повторной попыткой при ошибках."""
     local_client = Client(WEBDAV_OPTIONS)
     cap = cv2.VideoCapture(video_path)
     existing_frames = count_remote_frames(webdav_client=local_client)
     logger.info(f"Извлекаем кадры из {video_path}. FPS - {frames_per_second}")
-    if existing_frames >= 5000:
+    if existing_frames >= max_frames:
         logger.warning(
-            f"Превышен лимит кадров в хранилище ({existing_frames} >= 5000). Пропускаем видео {video_path}.")
+            f"Превышен лимит кадров в хранилище ({existing_frames} >= {max_frames}). Пропускаем видео {video_path}.")
         cap.release()
         return False, video_path, existing_frames
 
@@ -599,7 +599,7 @@ def process_video_loop(max_frames=7000, only_cargo_type: str = None, fps: float 
             FRAMES_PER_SECOND_EURO if cargo_type == "euro" else FRAMES_PER_SECOND_BUNKER
         )
         logger.info(f"Нарезка кадров из {local_path}. Используется FPS: {effective_fps}")
-        success, video_path, frames = extract_frames(local_path, frames_per_second=effective_fps)
+        success, video_path, frames = extract_frames(local_path, frames_per_second=effective_fps, max_frames=max_frames)
         total_frames_in_storage = frame_count + int(frames)
         logger.info(f"Статус: {success}. Кадров {total_frames_in_storage}/{max_frames}")
         if not success:
