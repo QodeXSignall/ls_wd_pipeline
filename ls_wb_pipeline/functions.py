@@ -375,7 +375,7 @@ def extract_frames(video_path, frames_per_second: float = None):
                     logger.error(
                         f"Не удалось загрузить кадр {frame_filename} после {max_retries} попыток.")
                     cap.release()
-                    return False,video_path, existing_frames
+                    return False, video_path, existing_frames
             else:
                 logger.warning(
                     f"Предупреждение: Кадр {local_frame_path} не был создан.")
@@ -504,6 +504,7 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
     downloaded_video_counter = 0
 
     # Ускоряем поиск видео, распарсив название и выполняя поиск в конкретной папке
+    logger.debug("Получаем генератор видео в облаке.")
     if concrete_video_name:
         try:
             resolved_path = resolve_video_path(concrete_video_name, BASE_REMOTE_DIR, client)
@@ -513,10 +514,12 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
     else:
         remote_dir = BASE_REMOTE_DIR
         video_generator = iter_video_files(remote_dir)
+    logger.debug("Генератор видео готов.")
 
     result_dict = {"total_frames_downloaded": 0, "vid_process_results": [], "total_frames_in_storage": 0}
     while True:
         # Проверяем количество кадров перед началом обработки видео
+        logger.debug("Итерируем генератор...")
         try:
             items = with_retries(lambda: client.list(REMOTE_FRAME_DIR), log_prefix="[WebDAV:list REMOTE_FRAME_DIR] ")
             frame_count = sum(1 for item in items if item.endswith(".jpg"))
