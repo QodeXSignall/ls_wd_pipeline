@@ -116,11 +116,6 @@ def remount_webdav(from_systemd=False):
         logger.error(f"Ошибка при монтировании WebDAV: {e}")
 
 
-def get_all_video_files(max_files=3):
-    """Возвращает не более `max_files` валидных видео из WebDAV."""
-    return list(islice(iter_video_files(BASE_REMOTE_DIR), max_files))
-
-
 def iter_video_files(path):
     """Генератор, лениво обходит WebDAV и yield'ит валидные mp4-файлы."""
     items = client.list(path)
@@ -527,7 +522,7 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
             video = next(video_generator)
         except StopIteration:
             logger.info("Все видео обработаны")
-            return {"error": "Все видео обработаны"}
+            return {"error": "Все видео обработаны, больше нет необработанных"}
 
         current_video_name = os.path.basename(video)
         if concrete_video_name and concrete_video_name != current_video_name:
@@ -559,6 +554,7 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
                     logger.warning(f"[WARN] Нет switch_events в {report_path}")
         except Exception as e:
             logger.warning(f"[WARN] Не удалось загрузить или распарсить report.json для {video}: {e}")
+            cargo_type = "euro"
 
         if only_cargo_type and cargo_type != only_cargo_type:
             logger.debug(f"Тип груза - {cargo_type}. Но качаем только - {only_cargo_type}, пропуск...")
