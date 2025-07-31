@@ -439,7 +439,7 @@ def delete_blacklisted_files():
 '''
 
 
-def main_process_new_frames(max_frames=3000, only_cargo_type: str = None, fps: float = None, video_name: str = None):
+def main_process_new_frames(max_frames=7000, only_cargo_type: str = None, fps: float = None, video_name: str = None):
     logger.info("\n\U0001f504 Запущен основной цикл создания фреймов")
     result = process_video_loop(max_frames=max_frames, only_cargo_type=only_cargo_type, fps=fps, concrete_video_name=video_name)
     remount_webdav()
@@ -498,7 +498,7 @@ def resolve_video_path(concrete_video_name: str, base_remote_dir: str, client) -
 
     return f"{remote_dir}/{mp4_files[0]}"
 
-def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float = None, concrete_video_name: str = None):
+def process_video_loop(max_frames=7000, only_cargo_type: str = None, fps: float = None, concrete_video_name: str = None):
     remount_webdav()
     os.makedirs(LOCAL_VIDEO_DIR, exist_ok=True)
     downloaded_video_counter = 0
