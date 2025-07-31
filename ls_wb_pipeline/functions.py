@@ -521,8 +521,10 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
         # Проверяем количество кадров перед началом обработки видео
         logger.debug("Итерируем генератор...")
         try:
+            logger.debug("Считаем количество кадров, которые уже в хранилище...")
             items = with_retries(lambda: client.list(REMOTE_FRAME_DIR), log_prefix="[WebDAV:list REMOTE_FRAME_DIR] ")
             frame_count = sum(1 for item in items if item.endswith(".jpg"))
+            logger.debug(f"В хранилище {frame_count} кадров")
         except Exception as e:
             logger.error(f"Ошибка при проверке лимита кадров: {e}")
             break
@@ -541,6 +543,7 @@ def process_video_loop(max_frames=3000, only_cargo_type: str = None, fps: float 
             return {"error": "Все видео обработаны, больше нет необработанных"}
 
         current_video_name = os.path.basename(video)
+        logger.debug(f"Работаем с видео {current_video_name}")
         if concrete_video_name and concrete_video_name != current_video_name:
             logger.debug(f"Пропущен файл: {current_video_name} (ищем видео {concrete_video_name})")
             continue
