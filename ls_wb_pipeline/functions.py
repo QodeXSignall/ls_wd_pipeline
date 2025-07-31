@@ -117,31 +117,41 @@ def remount_webdav(from_systemd=False):
 
 
 def iter_video_files(path):
-    items = with_retries(lambda: client.list(path), log_prefix=f"[WebDAV:list {path}] ")
+    try:
+        items = with_retries(lambda: client.list(path),
+                             log_prefix=f"[WebDAV:list {path}] ")
+    except Exception as e:
+        logger.error(f"[WebDAV] Ошибка при list({path}): {e}")
+        return
 
-    # сначала файлы
+    # Сначала файлы
     for item in items:
         if item.endswith(".mp4"):
             item_path = sanitize_path(f"{path}/{item}")
             if any(reg in item for reg in BLACKLISTED_REGISTRATORS):
-                logger.debug(f"Пропущен файл: {item_path} (в чёрном списке)")
                 continue
             if item_path in downloaded_videos:
                 continue
             yield item_path
 
-    # потом рекурсивно папки
+    # Потом папки — но не "глубокий dive" сразу,
+    # а отдаём генератор верхнего уровня по очереди
+    dirs = []
     for item in items:
-        item_path = sanitize_path(f"{path}/{item}")
-        try:
-            is_directory = with_retries(lambda: client.is_dir(item_path),
-                                        log_prefix=f"[WebDAV:is_dir {item_path}] ")
-        except Exception as e:
-            logger.warning(f"[WebDAV] Пропущен элемент {item_path} из-за ошибки: {e}")
-            continue
+        if not item.endswith(".mp4"):
+            dirs.append(sanitize_path(f"{path}/{item}"))
 
+    for dir_path in dirs:
+        try:
+            is_directory = with_retries(lambda: client.is_dir(dir_path),
+                                        log_prefix=f"[WebDAV:is_dir {dir_path}] ")
+        except Exception as e:
+            logger.warning(f"[WebDAV] Пропущен элемент {dir_path}: {e}")
+            continue
         if is_directory:
-            yield from iter_video_files(item_path)
+            # ⚠️ Ключевой момент — `yield from` заменяем на `yield` генератора
+            for video in iter_video_files(dir_path):
+                yield video
 
 
 def sanitize_path(path):
@@ -498,6 +508,11 @@ def resolve_video_path(concrete_video_name: str, base_remote_dir: str, client) -
 
     return f"{remote_dir}/{mp4_files[0]}"
 
+def top_level_generator():
+    registrators = with_retries(lambda: client.list(BASE_REMOTE_DIR))
+    for reg in registrators:
+        yield sanitize_path(f"{BASE_REMOTE_DIR}/{reg}")
+
 def process_video_loop(max_frames=7000, only_cargo_type: str = None, fps: float = None, concrete_video_name: str = None):
     remount_webdav()
     os.makedirs(LOCAL_VIDEO_DIR, exist_ok=True)
@@ -513,7 +528,12 @@ def process_video_loop(max_frames=7000, only_cargo_type: str = None, fps: float 
             return {"error": f"Ошибка при разрешении пути к видео {concrete_video_name}: {e}"}
     else:
         remote_dir = BASE_REMOTE_DIR
-        video_generator = iter_video_files(remote_dir)
+        video_generator = (
+            video
+            for reg_dir in top_level_generator()
+            for video in iter_video_files(reg_dir)
+        )
+        #video_generator = iter_video_files(remote_dir)
     logger.debug("Генератор видео готов.")
 
     result_dict = {"total_frames_downloaded": 0, "vid_process_results": [], "total_frames_in_storage": 0}
