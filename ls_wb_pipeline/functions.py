@@ -117,14 +117,20 @@ def remount_webdav(from_systemd=False):
 
 
 def iter_video_files(path):
-    """Генератор, лениво обходит WebDAV и yield'ит валидные mp4-файлы."""
-    try:
-        items = with_retries(lambda: client.list(path),
-                             log_prefix=f"[WebDAV:list {path}] ")
-    except Exception as e:
-        logger.error(f"[WebDAV] Ошибка при list({path}): {e}")
-        return  # прекращаем обход этого пути
+    items = with_retries(lambda: client.list(path), log_prefix=f"[WebDAV:list {path}] ")
 
+    # сначала файлы
+    for item in items:
+        if item.endswith(".mp4"):
+            item_path = sanitize_path(f"{path}/{item}")
+            if any(reg in item for reg in BLACKLISTED_REGISTRATORS):
+                logger.debug(f"Пропущен файл: {item_path} (в чёрном списке)")
+                continue
+            if item_path in downloaded_videos:
+                continue
+            yield item_path
+
+    # потом рекурсивно папки
     for item in items:
         item_path = sanitize_path(f"{path}/{item}")
         try:
@@ -136,13 +142,7 @@ def iter_video_files(path):
 
         if is_directory:
             yield from iter_video_files(item_path)
-        elif item.endswith(".mp4"):
-            if any(reg in item for reg in BLACKLISTED_REGISTRATORS):
-                logger.debug(f"Пропущен файл: {item_path} (в чёрном списке)")
-                continue
-            if item_path in downloaded_videos:
-                continue
-            yield item_path
+
 
 def sanitize_path(path):
     return path.replace("//", "/")
