@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import FileResponse
 from ls_wb_pipeline import settings
 from ls_wb_pipeline.fastapi_app import services
@@ -16,25 +16,51 @@ def build_dataset(
     return services.enrich_dataset_and_cleanup(dry_run=dry_run,
         del_unannotated=del_unannotated, train_ratio=train_ratio, test_ratio=test_ratio, val_ratio=val_ratio)
 
+
 @router.get("/analyze-dataset", tags=["dataset"])
 def analyze_dataset():
     return services.analyze_dataset_service()
 
+
+# === NEW: подготовка архива датасета в фоне ===
+@router.post("/prepare-dataset", tags=["dataset"])
+def prepare_dataset():
+    try:
+        task = services.prepare_dataset_start()
+        return task
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to start prepare task: {e}")
+
+
+@router.get("/prepare-dataset/{task_id}", tags=["dataset"])
+def prepare_dataset_status(task_id: str):
+    st = services.prepare_dataset_status(task_id)
+    if st is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return st
+
+
 @router.get("/download-dataset", tags=["dataset"])
 def download_dataset():
     try:
-        archive_path = services.get_zip_dataset()
+        archive_path = services.get_ready_zip_path()
         return FileResponse(
             archive_path,
             media_type="application/zip",
             filename="dataset.zip"
         )
     except FileNotFoundError as e:
-        return {"error": str(e)}
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to send archive: {e}")
+
 
 @router.delete("/del-dataset", tags=["dataset"])
 def delete_dataset():
     return services.delete_dataset_service()
+
 
 @router.post("/load-frames", tags=["frames"])
 def load_frames(max_frames: int = Query(300, description="Максимум кадров"),
@@ -46,6 +72,7 @@ def load_frames(max_frames: int = Query(300, description="Максимум ка�
                 video_name: str = Query(default=None, description="Скачать конкретное видео (можно скачать уже скачанное ранее)")):
     return services.load_new_frames(max_frames=max_frames, only_cargo_type=only_cargo_type, fps=fps, video_name=video_name)
 
+
 @router.delete("/del-frames", tags=["frames"])
 def delete_frames(
         dry_run: bool = Query(False, description="Имитация удаления"),
@@ -53,6 +80,7 @@ def delete_frames(
                                      description="Сохранить уже анотированые кадры?"),):
     tasks = services.functions.get_all_tasks()
     return services.cleanup_frames_tasks(tasks=tasks, dry_run=dry_run, save_annotated=save_annotated)
+
 
 @router.delete("/clean-download-history", tags=["service"])
 def clean_download_history():
