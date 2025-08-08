@@ -1,4 +1,3 @@
-import io
 import json
 import os
 import shutil
@@ -8,16 +7,12 @@ import time
 import uuid
 import zipfile
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Iterator
 
 from ls_wb_pipeline import functions, build_dataset_cls
 from ls_wb_pipeline.logger import logger
 from ls_wb_pipeline import settings
 
-
-# =========================
-# Аналитика/очистка/датасет
-# =========================
 
 def analyze_dataset_service():
     result = build_dataset_cls.analyze_classification_dataset(settings.DATASET_PATH)
@@ -51,7 +46,7 @@ def enrich_dataset_and_cleanup(dry_run: bool = True, train_ratio=0.8, test_ratio
     report["before"] = analyze_dataset_service()
 
     all_tasks = functions.get_all_tasks()
-    build_dataset_cls.build_classification_dataset(all_tasks, train_ratio=train_ratio, test_ratio=test_ratio, val_ratio=val_ratio)  # нужна будет версия main, принимающая уже загруженные данные
+    build_dataset_cls.build_classification_dataset(all_tasks, train_ratio=train_ratio, test_ratio=test_ratio, val_ratio=val_ratio)
 
     if del_unannotated:
         delete_report = cleanup_frames_tasks(all_tasks, dry_run=dry_run, save_annotated=True)
@@ -65,11 +60,8 @@ def load_new_frames(max_frames: int = 300, only_cargo_type: str = None, fps: flo
     return functions.main_process_new_frames(max_frames=max_frames, only_cargo_type=only_cargo_type, fps=fps, video_name=video_name)
 
 
-# =========================
-# Подготовка ZIP архива в фоне
-# =========================
+# ==== ZIP background preparation ====
 
-# Директория для архива: берём из настроек, иначе кладём рядом с датасетом
 _ARCHIVE_DIR = Path(getattr(settings, "DATASET_ARCHIVE_DIR",
                             Path(settings.DATASET_PATH).parent / "dataset_archives"))
 _ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
@@ -77,7 +69,6 @@ _ARCHIVE_PATH = _ARCHIVE_DIR / "dataset.zip"
 _META_PATH = _ARCHIVE_DIR / "dataset.zip.meta.json"
 _LOCK_PATH = _ARCHIVE_DIR / ".dataset_zip.lock"
 
-# Реестр задач в памяти процесса
 _TASKS: Dict[str, Dict[str, Any]] = {}
 _TASKS_LOCK = threading.Lock()
 
@@ -136,32 +127,28 @@ def _release_lock():
 
 
 def _zip_build_worker(task_id: str, dataset_dir: Path):
-    """Фоновая сборка ZIP; обновляет прогресс задачи в _TASKS."""
     with _TASKS_LOCK:
         task = _TASKS.get(task_id)
         if not task:
             return
         task.update({"status": "running", "progress": 0, "detail": "Initializing"})
 
-    # Счётчик файлов (для прогресса)
     total_files = _count_files(dataset_dir)
     if total_files == 0:
         with _TASKS_LOCK:
             _TASKS[task_id].update({"status": "error", "error": "Dataset is empty"})
         return
 
-    # Ожидаем освобождения другого билдера, если он есть
     waited = 0
     while not _acquire_lock():
         time.sleep(0.5)
         waited += 0.5
-        if waited > 300:  # 5 минут ожидания
+        if waited > 300:
             with _TASKS_LOCK:
                 _TASKS[task_id].update({"status": "error", "error": "Timeout waiting for another build"})
             return
 
     try:
-        # Если не нужна пересборка — мгновенно завершаем
         if not _need_rebuild(dataset_dir, _ARCHIVE_PATH, _META_PATH):
             with _TASKS_LOCK:
                 _TASKS[task_id].update({
@@ -188,7 +175,6 @@ def _zip_build_worker(task_id: str, dataset_dir: Path):
                     try:
                         zf.write(full, arcname)
                     except FileNotFoundError:
-                        # файл исчез между подсчётом и упаковкой — пропустим
                         continue
                     written += 1
                     if written % 50 == 0 or written == total_files:
@@ -199,7 +185,6 @@ def _zip_build_worker(task_id: str, dataset_dir: Path):
                                 "detail": f"Packed {written}/{total_files} files"
                             })
 
-        # Атомарная замена
         tmp_path.replace(_ARCHIVE_PATH)
         _write_meta(dataset_dir)
 
@@ -218,7 +203,6 @@ def _zip_build_worker(task_id: str, dataset_dir: Path):
 
 
 def prepare_dataset_start() -> Dict[str, Any]:
-    """Создаёт задачу сборки ZIP и запускает её в фоне. Возвращает {task_id, status}."""
     dataset_dir = Path(settings.DATASET_PATH)
     if not dataset_dir.exists():
         raise FileNotFoundError("Датасет ещё не создан.")
@@ -239,19 +223,79 @@ def prepare_dataset_status(task_id: str) -> Optional[Dict[str, Any]]:
 
 
 def get_ready_zip_path() -> str:
-    """Возвращает путь к готовому ZIP, если он существует; иначе 404."""
     if not _ARCHIVE_PATH.exists():
         raise FileNotFoundError("Архив ещё не готов. Сначала вызовите /prepare-dataset и дождитесь статуса done.")
     return str(_ARCHIVE_PATH)
 
 
-# ====== СТАРЫЙ API (оставлен для совместимости) ======
+# ===== Streaming download helpers =====
+
+CHUNK_SIZE = int(getattr(settings, "DOWNLOAD_CHUNK_SIZE", 1024 * 1024))  # 1 MiB default
+
+def get_download_headers_and_path():
+    path = get_ready_zip_path()
+    stat = os.stat(path)
+    headers = {
+        "Content-Length": str(stat.st_size),
+        "Content-Disposition": 'attachment; filename="dataset.zip"',
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+    }
+    return path, stat.st_size, headers
+
+
+def iter_file(path: str, start: int = 0, end: Optional[int] = None) -> Iterator[bytes]:
+    with open(path, "rb") as f:
+        f.seek(start)
+        bytes_left = None if end is None else (end - start + 1)
+        while True:
+            to_read = CHUNK_SIZE if bytes_left is None else min(CHUNK_SIZE, bytes_left)
+            data = f.read(to_read)
+            if not data:
+                break
+            yield data
+            if bytes_left is not None:
+                bytes_left -= len(data)
+                if bytes_left <= 0:
+                    break
+
+
+def parse_range_header(range_header: str, total_size: int):
+    try:
+        unit, rng = range_header.split("=", 1)
+        if unit.strip().lower() != "bytes":
+            return None, None
+        start_str, end_str = rng.split("-", 1)
+        if start_str == "":
+            length = int(end_str)
+            start = max(0, total_size - length)
+            end = total_size - 1
+        else:
+            start = int(start_str)
+            end = total_size - 1 if end_str == "" else int(end_str)
+        if start < 0 or end < start or start >= total_size:
+            return None, None
+        return start, min(end, total_size - 1)
+    except Exception:
+        return None, None
+
+
+def build_range_headers(start: int, end: int, total: int):
+    return {
+        "Content-Range": f"bytes {start}-{end}/{total}",
+        "Content-Length": str(end - start + 1),
+        "Accept-Ranges": "bytes",
+        "Content-Disposition": 'attachment; filename="dataset.zip"',
+        "Cache-Control": "no-store",
+    }
+
+
+# ===== Legacy endpoints kept for compatibility =====
+
 def get_zip_dataset():
-    # Сохранено для обратной совместимости, но лучше использовать prepare+download
     dataset_dir = settings.DATASET_PATH
     if not os.path.exists(dataset_dir):
         raise FileNotFoundError("Датасет ещё не создан.")
-
     tmp_dir = tempfile.mkdtemp()
     archive_path = os.path.join(tmp_dir, "dataset.zip")
     shutil.make_archive(archive_path[:-4], "zip", dataset_dir)
@@ -261,7 +305,6 @@ def get_zip_dataset():
 def delete_dataset_service():
     if os.path.exists(settings.DATASET_PATH):
         shutil.rmtree(settings.DATASET_PATH)
-        # При удалении датасета можно удалить и архив — по желанию
         try:
             if _ARCHIVE_PATH.exists():
                 _ARCHIVE_PATH.unlink()
