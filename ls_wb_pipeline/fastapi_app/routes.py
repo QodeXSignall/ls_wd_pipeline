@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Query, HTTPException, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse
 from ls_wb_pipeline import settings
 from ls_wb_pipeline.fastapi_app import services
 
@@ -42,30 +42,17 @@ def prepare_dataset_status(task_id: str):
 
 
 @router.get("/download-dataset", tags=["dataset"])
-def download_dataset(request: Request):
+def download_dataset():
     try:
-        path, total_size, headers = services.get_download_headers_and_path()
-        range_header = request.headers.get('range')
-        if range_header:
-            start, end = services.parse_range_header(range_header, total_size)
-            if start is None:
-                raise HTTPException(status_code=416, detail="Invalid Range")
-            headers.update(services.build_range_headers(start, end, total_size))
-            return StreamingResponse(
-                services.iter_file(path, start=start, end=end),
-                status_code=206,
-                media_type="application/zip",
-                headers=headers,
-            )
-        return StreamingResponse(
-            services.iter_file(path),
+        archive_path = services.get_ready_zip_path()
+        return FileResponse(
+            archive_path,
             media_type="application/zip",
-            headers=headers,
+            filename="dataset.zip"
         )
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to stream archive: {e}")
+
 
 
 @router.delete("/del-dataset", tags=["dataset"])
